@@ -16,6 +16,10 @@ kubectl apply -f service.yaml
 - Kubernetes ensures high availability through replica management.
 - Self-healing behavior improves system reliability.
 
+## Self-Healing Observation
+
+When a pod fails, Kubernetes automatically replaces it to maintain the desired state.
+
 ## Reflection
 
 ### Why namespaces alone are not enough?
