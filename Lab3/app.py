@@ -1,9 +1,13 @@
 from flask import Flask
+import logging
 
 app = Flask(__name__)
 
+logging.basicConfig(level=logging.INFO)
+
 @app.route("/")
 def home():
+    logging.info("Home endpoint was called")
     return "Hello from Lab 3"
 
 @app.route("/health")
