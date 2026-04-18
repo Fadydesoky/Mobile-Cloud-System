@@ -13,3 +13,10 @@ This repository contains implementations for Mobile and Cloud Computing labs.
 - Docker
 - Python (Flask)
 - Kubernetes (YAML configurations)
+
+## Key Learnings
+
+- Difference between virtualization and containerization
+- Practical Docker image optimization
+- Basics of Kubernetes orchestration
+
