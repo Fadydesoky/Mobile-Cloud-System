@@ -13,3 +13,15 @@ AWS uses Nitro Hypervisor to improve performance and security by offloading virt
 ## Tail Latency
 Latency varies due to delays in processing.
 Tail latency increases when the system is under load.
+
+## How to Run
+
+### Build Docker Image
+docker build -t lab1 .
+
+### Run Container
+docker run -p 5000:5000 lab1
+
+### Access
+Open browser and go to:
+http://localhost:5000
