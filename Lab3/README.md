@@ -29,3 +29,9 @@ Kubernetes continuously ensures the system matches the defined state.
 
 ### Difference between readiness and liveness?
 Readiness checks availability, liveness checks health.
+
+## Design Decisions
+
+- Multi-stage builds were used to reduce image size.
+- Kubernetes Deployment ensures scalability and fault tolerance.
+- Probes improve system reliability by monitoring health.
