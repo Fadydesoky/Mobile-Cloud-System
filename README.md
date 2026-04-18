@@ -8,6 +8,17 @@ This repository contains implementations for Mobile and Cloud Computing labs.
 - Lab 2: Distributed Systems Concepts
 - Lab 3: Docker and Kubernetes
 
+## Screenshots
+
+### Docker Build
+![Docker Build](screenshots/docker-build.png)
+
+### Docker Images
+![Docker Images](screenshots/docker-images.png)
+
+### Kubernetes Pods
+![Kubernetes Pods](screenshots/k8s-pods.png)
+
 ## Technologies Used
 
 - Docker
