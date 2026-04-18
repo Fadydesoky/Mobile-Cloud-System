@@ -14,6 +14,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: lab3
+        image: lab3:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
