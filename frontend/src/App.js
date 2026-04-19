@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios
+import axios from "axios";
 function App() {
   const [dark, setDark] = useState(true);
   const [loading, setLoading] = useState(false);
