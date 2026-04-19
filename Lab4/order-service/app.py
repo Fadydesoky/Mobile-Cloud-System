@@ -5,10 +5,14 @@ import requests
 from flask import Flask, jsonify, request
 from datetime import datetime
 from flask_cors import CORS
-
-CORS(app)
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 app = Flask(__name__)
+CORS(app)
+
+# Prometheus Metrics
+REQUEST_COUNT = Counter('order_service_requests_total', 'Total requests', ['method', 'endpoint', 'status'])
+REQUEST_LATENCY = Histogram('order_service_request_latency_seconds', 'Request latency', ['endpoint'])
 
 logging.basicConfig(level=logging.INFO)
 
@@ -42,11 +46,32 @@ def fetch_product(product_id, retries=2, delay=1):
 
 @app.route("/health")
 def health():
+    REQUEST_COUNT.labels(method='GET', endpoint='/health', status='200').inc()
     return jsonify({
         "service": "order-service",
         "status": "up",
-        "time": datetime.utcnow().isoformat()
+        "time": datetime.utcnow().isoformat(),
+        "version": os.getenv("APP_VERSION", "1.0.0")
     })
+
+
+@app.route("/ready")
+def ready():
+    """Readiness probe - checks if service can accept traffic"""
+    try:
+        # Check if product service is reachable
+        response = requests.get(f"{PRODUCT_SERVICE_URL}/health", timeout=2)
+        if response.status_code == 200:
+            return jsonify({"status": "ready", "dependencies": {"product-service": "up"}}), 200
+    except requests.exceptions.RequestException:
+        pass
+    return jsonify({"status": "not ready", "dependencies": {"product-service": "down"}}), 503
+
+
+@app.route("/metrics")
+def metrics():
+    """Prometheus metrics endpoint"""
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 
 @app.route("/orders", methods=["POST"])
@@ -82,9 +107,5 @@ def create_order():
 
 
 if __name__ == "__main__":
-    PRODUCT_SERVICE_URL = os.getenv(
-        "PRODUCT_SERVICE_URL",
-        "http://product-service:5001"
-    )
     PORT = int(os.getenv("ORDER_SERVICE_PORT", 5002))
-app.run(host="0.0.0.0", port=PORT)
+    app.run(host="0.0.0.0", port=PORT)
