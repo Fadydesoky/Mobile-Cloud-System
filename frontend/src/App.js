@@ -205,6 +205,4 @@ const styles = {
   },
 };
 
-Demo environment — backend simulated
-
 export default App;
