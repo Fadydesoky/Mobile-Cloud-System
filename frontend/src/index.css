@@ -1,4 +1,79 @@
-* {
+/* CSS Variables - Design Tokens */
+:root {
+  /* Background Colors */
+  --background: #000000;
+  --background-secondary: #0a0a0a;
+  --background-tertiary: #111111;
+  --background-elevated: #171717;
+  
+  /* Border Colors */
+  --border: #1a1a1a;
+  --border-hover: #262626;
+  --border-focus: #3b82f6;
+  
+  /* Text Colors */
+  --foreground: #fafafa;
+  --foreground-secondary: #a1a1aa;
+  --foreground-muted: #52525b;
+  
+  /* Accent Colors */
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --success: #22c55e;
+  --success-muted: rgba(34, 197, 94, 0.15);
+  --warning: #eab308;
+  --warning-muted: rgba(234, 179, 8, 0.15);
+  --error: #ef4444;
+  --error-muted: rgba(239, 68, 68, 0.15);
+  
+  /* Tech Stack Colors */
+  --react-color: #61dafb;
+  --flask-color: #22c55e;
+  --docker-color: #2496ed;
+  --k8s-color: #326ce5;
+  --redis-color: #dc382d;
+  
+  /* Gradients */
+  --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #2dd4bf 100%);
+  --gradient-chart: linear-gradient(180deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0) 100%);
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.15);
+  
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  
+  /* Spacing */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Light mode */
+[data-theme="light"] {
+  --background: #ffffff;
+  --background-secondary: #fafafa;
+  --background-tertiary: #f5f5f5;
+  --background-elevated: #ffffff;
+  --border: #e5e5e5;
+  --border-hover: #d4d4d4;
+  --foreground: #0a0a0a;
+  --foreground-secondary: #525252;
+  --foreground-muted: #a3a3a3;
+}
+
+/* Global Resets */
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -7,41 +82,38 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #000;
-  color: #fafafa;
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
   line-height: 1.5;
+  min-height: 100vh;
 }
 
-code, pre {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+code, pre, kbd, samp {
+  font-family: var(--font-mono);
 }
 
-/* Animations */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+/* Selection */
+::selection {
+  background-color: var(--accent);
+  color: white;
 }
 
-/* Scrollbar styling */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -49,35 +121,119 @@ code, pre {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #262626;
-  border-radius: 3px;
+  background: var(--border-hover);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #404040;
+  background: var(--foreground-muted);
 }
 
-/* Selection */
-::selection {
-  background: #3b82f6;
-  color: white;
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-/* Focus styles */
-button:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-/* Button transitions */
-button {
-  transition: all 0.15s ease;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-button:hover:not(:disabled) {
-  opacity: 0.9;
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-button:active:not(:disabled) {
-  transform: scale(0.98);
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
+}
+
+@keyframes dataFlow {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Utility Classes */
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Stagger animations for lists */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+.stagger-6 { animation-delay: 300ms; }
+
+/* Glass effect */
+.glass {
+  background: rgba(17, 17, 17, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: var(--gradient-blue);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--background-tertiary) 25%,
+    var(--background-elevated) 50%,
+    var(--background-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }
