@@ -103,6 +103,19 @@ Kubernetes configuration files were designed to represent deployment behavior, i
 
 ---
 
+## Screenshots
+
+### Docker Build
+![Docker Build](screenshots/docker-build.png)
+
+### Docker Images
+![Docker Images](screenshots/docker-images.png)
+
+### Kubernetes Pods
+![Kubernetes Pods](screenshots/k8s-pods.png)
+
+---
+
 ## Mobile Integration
 
 The Flask API can be accessed from a mobile device using HTTP requests.
