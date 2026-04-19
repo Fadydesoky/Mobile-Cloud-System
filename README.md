@@ -62,8 +62,8 @@ End-to-end flow: Frontend → Flask API → Container → Kubernetes → Redis
 ## Labs Overview
 
 - **Lab 1:** Virtualization and Cloud Basics (Latency & AWS)
-- **Lab 2:** Distributed Systems (Redis & Consistency Simulation)
-- **Lab 3:** Containerization and Kubernetes Orchestration
+- **Lab 2:** Distributed systems using Redis + Docker Compose
+- **Lab 3:** Containerization + Kubernetes orchestration (HPA, probes, services)
 
 ## API Endpoints
 
