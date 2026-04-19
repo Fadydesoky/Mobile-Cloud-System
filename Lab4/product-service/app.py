@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 import logging
 from datetime import datetime
 from flask_cors import CORS
+import os
 
 CORS(app)
 
@@ -38,4 +39,5 @@ def get_product(product_id):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    PORT = int(os.getenv("PRODUCT_SERVICE_PORT", 5001))
+    app.run(host="0.0.0.0", port=PORT)
