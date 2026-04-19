@@ -10,6 +10,8 @@
 
 ---
 
+## Description
+
 An end-to-end cloud-native system demonstrating modern mobile-cloud architecture using containers, orchestration, and distributed systems.
 
 The project demonstrates how modern cloud-native applications are built using containers, orchestration, and distributed system principles.
