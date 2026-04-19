@@ -1,33 +1,390 @@
-import React, { useState, useEffect, useCallback } from "react";
-import axios from "axios";
-
-// API call function
-export const fetchData = async (url) => {
-  try {
-    const response = await axios.get(url);
-    return response.data;
-  } catch (error) {
-    throw new Error("Error fetching data");
-  }
-};
-
-// API call with retry logic
-export const fetchDataWithRetry = async (url, retries = 3) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fetchData(url);
-    } catch (error) {
-      if (i === retries - 1) throw error;
-    }
-  }
-};
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5002";
 const PRODUCT_SERVICE_URL = process.env.REACT_APP_PRODUCT_URL || "http://localhost:5001";
 
+// Icons as SVG components
+const Icons = {
+  Logo: () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2L2 19.5H22L12 2Z" fill="currentColor" />
+    </svg>
+  ),
+  Menu: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+    </svg>
+  ),
+  Sun: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="5" />
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+  ),
+  Moon: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+    </svg>
+  ),
+  Play: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" />
+    </svg>
+  ),
+  Refresh: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M23 4v6h-6M1 20v-6h6" />
+      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+    </svg>
+  ),
+  Activity: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  ),
+  Server: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+      <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+      <line x1="6" y1="6" x2="6.01" y2="6" />
+      <line x1="6" y1="18" x2="6.01" y2="18" />
+    </svg>
+  ),
+  Database: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  ),
+  Box: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  ),
+  Cloud: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" />
+    </svg>
+  ),
+  Zap: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" />
+    </svg>
+  ),
+  Check: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  ),
+  X: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  ),
+  ChevronRight: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  ),
+  ArrowRight: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  ),
+  Terminal: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </svg>
+  ),
+  Github: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
+    </svg>
+  ),
+  External: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  ),
+};
+
+// Status indicator component
+const StatusDot = ({ status, size = 8 }) => {
+  const colors = {
+    healthy: "var(--success)",
+    up: "var(--success)",
+    running: "var(--success)",
+    unhealthy: "var(--warning)",
+    degraded: "var(--warning)",
+    offline: "var(--error)",
+    error: "var(--error)",
+    unknown: "var(--foreground-muted)",
+  };
+
+  return (
+    <span
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        backgroundColor: colors[status] || colors.unknown,
+        display: "inline-block",
+        boxShadow: status === "healthy" || status === "up" || status === "running" 
+          ? `0 0 ${size}px ${colors.healthy}` 
+          : "none",
+      }}
+    />
+  );
+};
+
+// Mini chart component for sparklines
+const MiniChart = ({ data, color = "var(--accent)", height = 40 }) => {
+  if (!data || data.length === 0) return null;
+  
+  const max = Math.max(...data.map(d => d.value));
+  const min = Math.min(...data.map(d => d.value));
+  const range = max - min || 1;
+  
+  const points = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * 100;
+    const y = 100 - ((d.value - min) / range) * 100;
+    return `${x},${y}`;
+  }).join(" ");
+
+  const areaPoints = `0,100 ${points} 100,100`;
+
+  return (
+    <svg width="100%" height={height} viewBox="0 0 100 100" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={`gradient-${color.replace(/[^a-z0-9]/gi, "")}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon
+        points={areaPoints}
+        fill={`url(#gradient-${color.replace(/[^a-z0-9]/gi, "")})`}
+      />
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+};
+
+// Metric card component
+const MetricCard = ({ title, value, suffix, change, icon: Icon, trend, chart }) => (
+  <div
+    className="animate-fade-in"
+    style={{
+      padding: "20px",
+      borderRadius: "var(--radius-lg)",
+      border: "1px solid var(--border)",
+      backgroundColor: "var(--background-secondary)",
+      transition: "var(--transition-base)",
+      cursor: "default",
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.borderColor = "var(--border-hover)";
+      e.currentTarget.style.transform = "translateY(-2px)";
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.borderColor = "var(--border)";
+      e.currentTarget.style.transform = "translateY(0)";
+    }}
+  >
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+      <span style={{ fontSize: 13, color: "var(--foreground-secondary)", fontWeight: 500 }}>{title}</span>
+      {Icon && <span style={{ color: "var(--foreground-muted)" }}><Icon /></span>}
+    </div>
+    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+      <span style={{ fontSize: 32, fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: "-0.02em" }}>
+        {value}
+      </span>
+      {suffix && <span style={{ fontSize: 14, color: "var(--foreground-secondary)" }}>{suffix}</span>}
+    </div>
+    {change !== undefined && (
+      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ 
+          fontSize: 12, 
+          fontWeight: 500,
+          color: change >= 0 ? "var(--success)" : "var(--error)",
+        }}>
+          {change >= 0 ? "+" : ""}{change}%
+        </span>
+        <span style={{ fontSize: 11, color: "var(--foreground-muted)" }}>vs last hour</span>
+      </div>
+    )}
+    {chart && (
+      <div style={{ marginTop: 12 }}>
+        <MiniChart data={chart} color={trend === "up" ? "var(--success)" : "var(--accent)"} />
+      </div>
+    )}
+  </div>
+);
+
+// Service card component
+const ServiceCard = ({ name, status, latency, port, description, icon: Icon }) => (
+  <div
+    className="animate-fade-in"
+    style={{
+      padding: "20px",
+      borderRadius: "var(--radius-lg)",
+      border: "1px solid var(--border)",
+      backgroundColor: "var(--background-secondary)",
+      transition: "var(--transition-base)",
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.borderColor = "var(--border-hover)";
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.borderColor = "var(--border)";
+    }}
+  >
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          borderRadius: "var(--radius-md)",
+          backgroundColor: "var(--background-tertiary)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--foreground-secondary)",
+        }}>
+          {Icon && <Icon />}
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{name}</h3>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--foreground-muted)" }}>{description}</p>
+        </div>
+      </div>
+      <StatusDot status={status} size={10} />
+    </div>
+    <div style={{ display: "flex", gap: 16 }}>
+      <div>
+        <span style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</span>
+        <p style={{ margin: "4px 0 0", fontSize: 14, fontWeight: 500, textTransform: "capitalize", color: status === "healthy" || status === "up" ? "var(--success)" : status === "offline" ? "var(--error)" : "var(--foreground)" }}>{status}</p>
+      </div>
+      <div>
+        <span style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Latency</span>
+        <p style={{ margin: "4px 0 0", fontSize: 14, fontWeight: 500, fontFamily: "var(--font-mono)" }}>{latency || "N/A"}</p>
+      </div>
+      <div>
+        <span style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Port</span>
+        <p style={{ margin: "4px 0 0", fontSize: 14, fontWeight: 500, fontFamily: "var(--font-mono)" }}>{port}</p>
+      </div>
+    </div>
+  </div>
+);
+
+// Architecture node component
+const ArchNode = ({ label, sublabel, color, icon: Icon, isActive, delay = 0 }) => (
+  <div
+    className="animate-fade-in animate-float"
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 8,
+      animationDelay: `${delay}ms`,
+    }}
+  >
+    <div
+      style={{
+        width: 64,
+        height: 64,
+        borderRadius: "var(--radius-lg)",
+        background: `linear-gradient(135deg, ${color}30 0%, ${color}10 100%)`,
+        border: `1px solid ${color}50`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "var(--transition-base)",
+        boxShadow: isActive ? `0 0 30px ${color}40` : "none",
+      }}
+    >
+      {Icon ? <Icon /> : <span style={{ fontSize: 12, fontWeight: 600, color }}>{label}</span>}
+    </div>
+    <div style={{ textAlign: "center" }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>{label}</span>
+      <p style={{ margin: "2px 0 0", fontSize: 10, color: "var(--foreground-muted)" }}>{sublabel}</p>
+    </div>
+  </div>
+);
+
+// Connection line component
+const ConnectionLine = ({ animated }) => (
+  <div style={{ display: "flex", alignItems: "center", padding: "0 8px" }}>
+    <svg width="40" height="20" viewBox="0 0 40 20">
+      <defs>
+        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="var(--border-hover)" />
+          <stop offset="50%" stopColor="var(--accent)" />
+          <stop offset="100%" stopColor="var(--border-hover)" />
+        </linearGradient>
+      </defs>
+      <line
+        x1="0"
+        y1="10"
+        x2="40"
+        y2="10"
+        stroke={animated ? "url(#lineGradient)" : "var(--border-hover)"}
+        strokeWidth="2"
+        strokeDasharray={animated ? "4 2" : "none"}
+        style={animated ? { animation: "dataFlow 1s linear infinite" } : {}}
+      />
+      <polygon
+        points="35,6 40,10 35,14"
+        fill={animated ? "var(--accent)" : "var(--border-hover)"}
+      />
+    </svg>
+  </div>
+);
+
+// Log entry component
+const LogEntry = ({ timestamp, message, type }) => {
+  const colors = {
+    info: "var(--foreground-secondary)",
+    success: "var(--success)",
+    warning: "var(--warning)",
+    error: "var(--error)",
+  };
+
+  return (
+    <div
+      className="animate-slide-in"
+      style={{
+        display: "flex",
+        gap: 12,
+        padding: "8px 0",
+        borderBottom: "1px solid var(--border)",
+        fontSize: 13,
+        fontFamily: "var(--font-mono)",
+      }}
+    >
+      <span style={{ color: "var(--foreground-muted)", flexShrink: 0 }}>{timestamp}</span>
+      <span style={{ color: colors[type] || colors.info }}>{message}</span>
+    </div>
+  );
+};
+
 function App() {
-  const [dark, setDark] = useState(true);
+  const [theme, setTheme] = useState("dark");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [orderData, setOrderData] = useState(null);
@@ -41,30 +398,21 @@ function App() {
     totalRequests: 0,
     successRate: 100,
     avgLatency: 0,
-    uptime: "99.9%",
+    uptime: 99.9,
   });
   const [requestHistory, setRequestHistory] = useState([]);
+  const [latencyHistory, setLatencyHistory] = useState([]);
+  
+  // Generate sample chart data
+  const chartData = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => ({
+      value: Math.floor(Math.random() * 50) + 20 + (latencyHistory[i]?.latency || 0),
+    }));
+  }, [latencyHistory]);
 
-  // Theme colors
-  const theme = {
-    bg: dark ? "#000000" : "#fafafa",
-    bgSecondary: dark ? "#0a0a0a" : "#ffffff",
-    bgTertiary: dark ? "#171717" : "#f5f5f5",
-    border: dark ? "#262626" : "#e5e5e5",
-    borderHover: dark ? "#404040" : "#d4d4d4",
-    text: dark ? "#fafafa" : "#0a0a0a",
-    textSecondary: dark ? "#a3a3a3" : "#737373",
-    textMuted: dark ? "#525252" : "#a3a3a3",
-    accent: "#3b82f6",
-    success: "#22c55e",
-    warning: "#eab308",
-    error: "#ef4444",
-    purple: "#a855f7",
-  };
-
-  // Check service health
+  // Health check
   const checkHealth = useCallback(async () => {
-    const checkService = async (url, name) => {
+    const checkService = async (url) => {
       const start = performance.now();
       try {
         const res = await fetch(`${url}/health`, { mode: "cors" });
@@ -79,8 +427,8 @@ function App() {
     };
 
     const [orderStatus, productStatus] = await Promise.all([
-      checkService(API_BASE_URL, "order"),
-      checkService(PRODUCT_SERVICE_URL, "product"),
+      checkService(API_BASE_URL),
+      checkService(PRODUCT_SERVICE_URL),
     ]);
 
     setServices({ order: orderStatus, product: productStatus });
@@ -92,9 +440,14 @@ function App() {
     return () => clearInterval(interval);
   }, [checkHealth]);
 
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
   const addLog = (message, type = "info") => {
     const timestamp = new Date().toISOString().split("T")[1].split(".")[0];
-    setLogs((prev) => [{ timestamp, message, type, id: Date.now() }, ...prev].slice(0, 50));
+    setLogs((prev) => [{ timestamp, message, type, id: Date.now() }, ...prev].slice(0, 100));
   };
 
   const runSimulation = async () => {
@@ -103,15 +456,17 @@ function App() {
     setOrderData(null);
 
     const startTime = performance.now();
-    addLog("Initiating order simulation...", "info");
+    addLog("Initiating service mesh simulation...", "info");
+    addLog("POST /orders → Order Service", "info");
 
     try {
-      addLog("POST /orders - Connecting to Order Service", "info");
-
       const res = await fetch(`${API_BASE_URL}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_id: Math.floor(Math.random() * 3) + 1, quantity: Math.floor(Math.random() * 5) + 1 }),
+        body: JSON.stringify({
+          product_id: Math.floor(Math.random() * 3) + 1,
+          quantity: Math.floor(Math.random() * 5) + 1,
+        }),
       });
 
       const latency = Math.round(performance.now() - startTime);
@@ -119,35 +474,47 @@ function App() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
-      
-      setOrderData({
+
+      const orderResult = {
         orderId: result.order_id || `ORD-${Date.now().toString(36).toUpperCase()}`,
         product: result.product || "N/A",
         quantity: result.quantity || 0,
         totalPrice: result.total_price || 0,
         latency: `${latency}ms`,
         timestamp: new Date().toISOString(),
-      });
+        status: "success",
+      };
 
+      setOrderData(orderResult);
+
+      // Update metrics
       setMetrics((prev) => ({
         totalRequests: prev.totalRequests + 1,
         successRate: Math.round(((prev.totalRequests * prev.successRate / 100 + 1) / (prev.totalRequests + 1)) * 100),
         avgLatency: Math.round((prev.avgLatency * prev.totalRequests + latency) / (prev.totalRequests + 1)),
-        uptime: "99.9%",
+        uptime: 99.9,
       }));
 
+      // Update history
       setRequestHistory((prev) => [
         { time: new Date().toLocaleTimeString(), latency, status: "success" },
         ...prev,
-      ].slice(0, 10));
+      ].slice(0, 20));
 
-      addLog(`Order Service responded in ${latency}ms`, "success");
-      addLog(`Product fetched: ${result.product || "Product"}`, "success");
-      addLog(`Order ${result.order_id || "created"} - Total: $${result.total_price || 0}`, "success");
+      setLatencyHistory((prev) => [
+        { value: latency },
+        ...prev,
+      ].slice(0, 12));
+
+      addLog(`Order Service → Product Service [${latency}ms]`, "success");
+      addLog(`Product retrieved: ${result.product || "Product"}`, "success");
+      addLog(`Order ${orderResult.orderId} created successfully`, "success");
+      addLog(`Total: $${result.total_price || 0} | Quantity: ${result.quantity || 0}`, "info");
+      
       setStatus("healthy");
     } catch (err) {
       const latency = Math.round(performance.now() - startTime);
-      
+
       setMetrics((prev) => ({
         ...prev,
         totalRequests: prev.totalRequests + 1,
@@ -157,287 +524,434 @@ function App() {
       setRequestHistory((prev) => [
         { time: new Date().toLocaleTimeString(), latency, status: "error" },
         ...prev,
-      ].slice(0, 10));
+      ].slice(0, 20));
 
       addLog(`Error: ${err.message}`, "error");
-      addLog("Circuit breaker activated - Retrying...", "warning");
+      addLog("Circuit breaker triggered — initiating retry logic", "warning");
       setStatus("error");
     }
 
     setLoading(false);
   };
 
-  const getStatusIndicator = (s) => {
-    const colors = {
-      healthy: theme.success,
-      unhealthy: theme.warning,
-      offline: theme.error,
-      unknown: theme.textMuted,
-    };
-    return colors[s] || theme.textMuted;
-  };
-
-  const StatusDot = ({ status }) => (
-    <span
-      style={{
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        backgroundColor: getStatusIndicator(status),
-        display: "inline-block",
-        marginRight: 8,
-        boxShadow: status === "healthy" ? `0 0 8px ${theme.success}40` : "none",
-      }}
-    />
-  );
+  const tabs = [
+    { id: "overview", label: "Overview" },
+    { id: "services", label: "Services" },
+    { id: "logs", label: "Logs" },
+  ];
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: theme.bg, color: theme.text }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }}>
       {/* Navigation */}
-      <nav style={{ borderBottom: `1px solid ${theme.border}`, padding: "0 24px" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", alignItems: "center", height: 64, justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L2 19.5H22L12 2Z" fill={theme.text} />
-              </svg>
-              <span style={{ fontWeight: 600, fontSize: 15 }}>Mobile Cloud System</span>
+      <nav style={{ 
+        borderBottom: "1px solid var(--border)", 
+        backgroundColor: "var(--background-secondary)",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        backdropFilter: "blur(12px)",
+      }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", height: 56, justifyContent: "space-between" }}>
+            {/* Left side */}
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Icons.Logo />
+                <div style={{ height: 20, width: 1, backgroundColor: "var(--border)" }} />
+                <span style={{ fontWeight: 600, fontSize: 14 }}>Mobile Cloud System</span>
+              </div>
+              
+              {/* Tabs */}
+              <div style={{ display: "flex", gap: 2, marginLeft: 24 }}>
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "var(--radius-md)",
+                      border: "none",
+                      background: activeTab === tab.id ? "var(--background-tertiary)" : "transparent",
+                      color: activeTab === tab.id ? "var(--foreground)" : "var(--foreground-secondary)",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      transition: "var(--transition-fast)",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div style={{ height: 24, width: 1, backgroundColor: theme.border }} />
-            <div style={{ display: "flex", gap: 4 }}>
-              {["overview", "services", "logs"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: 6,
-                    border: "none",
-                    background: activeTab === tab ? theme.bgTertiary : "transparent",
-                    color: activeTab === tab ? theme.text : theme.textSecondary,
-                    cursor: "pointer",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    textTransform: "capitalize",
-                  }}
-                >
-                  {tab}
-                </button>
-              ))}
+
+            {/* Right side */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <a
+                href="https://github.com/Fadydesoky/Mobile-Cloud-System"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--foreground-secondary)",
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  transition: "var(--transition-fast)",
+                }}
+              >
+                <Icons.Github />
+                <span>GitHub</span>
+              </a>
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                style={{
+                  padding: 8,
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--border)",
+                  background: "var(--background-tertiary)",
+                  color: "var(--foreground-secondary)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {theme === "dark" ? <Icons.Sun /> : <Icons.Moon />}
+              </button>
+              <div
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: "9999px",
+                  backgroundColor: 
+                    status === "healthy" ? "var(--success-muted)" : 
+                    status === "error" ? "var(--error-muted)" : 
+                    status === "running" ? "var(--warning-muted)" : 
+                    "var(--background-tertiary)",
+                  color: 
+                    status === "healthy" ? "var(--success)" : 
+                    status === "error" ? "var(--error)" : 
+                    status === "running" ? "var(--warning)" : 
+                    "var(--foreground-secondary)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <StatusDot status={status === "idle" ? "unknown" : status} size={6} />
+                {status === "idle" ? "Ready" : status === "running" ? "Processing" : status === "healthy" ? "Healthy" : "Error"}
+              </div>
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              onClick={() => setDark(!dark)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: `1px solid ${theme.border}`,
-                background: theme.bgSecondary,
-                color: theme.textSecondary,
-                cursor: "pointer",
-                fontSize: 13,
-              }}
-            >
-              {dark ? "Light" : "Dark"}
-            </button>
-            <span
-              style={{
-                padding: "4px 10px",
-                borderRadius: 9999,
-                backgroundColor: status === "healthy" ? `${theme.success}20` : status === "error" ? `${theme.error}20` : `${theme.textMuted}20`,
-                color: status === "healthy" ? theme.success : status === "error" ? theme.error : theme.textSecondary,
-                fontSize: 12,
-                fontWeight: 500,
-              }}
-            >
-              {status === "idle" ? "Ready" : status === "running" ? "Processing..." : status === "healthy" ? "Healthy" : "Error"}
-            </span>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
+      <main style={{ maxWidth: 1400, margin: "0 auto", padding: "32px 24px" }}>
         {/* Header */}
-        <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 20 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 600, letterSpacing: "-0.02em" }}>Observability Dashboard</h1>
-            <p style={{ margin: "8px 0 0", color: theme.textSecondary, fontSize: 14 }}>
-              Real-time monitoring for microservices architecture
+            <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>
+              Observability Dashboard
+            </h1>
+            <p style={{ margin: "8px 0 0", color: "var(--foreground-secondary)", fontSize: 15 }}>
+              Real-time monitoring for cloud-native microservices architecture
             </p>
           </div>
-          <button
-            onClick={runSimulation}
-            disabled={loading}
-            style={{
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: loading ? theme.bgTertiary : theme.text,
-              color: loading ? theme.textMuted : theme.bg,
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: 14,
-              fontWeight: 500,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            {loading && (
-              <span style={{ width: 14, height: 14, border: `2px solid ${theme.textMuted}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-            )}
-            {loading ? "Processing..." : "Run Simulation"}
-          </button>
-        </div>
-
-        {/* Service Status Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
-          {[
-            { name: "Order Service", url: API_BASE_URL, ...services.order },
-            { name: "Product Service", url: PRODUCT_SERVICE_URL, ...services.product },
-            { name: "Total Requests", value: metrics.totalRequests, suffix: "" },
-            { name: "Avg Latency", value: metrics.avgLatency, suffix: "ms" },
-          ].map((item, i) => (
-            <div
-              key={i}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={checkHealth}
               style={{
-                padding: 20,
-                borderRadius: 12,
-                border: `1px solid ${theme.border}`,
-                backgroundColor: theme.bgSecondary,
+                padding: "10px 16px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--border)",
+                background: "var(--background-secondary)",
+                color: "var(--foreground-secondary)",
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: 500,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "var(--transition-fast)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ fontSize: 13, color: theme.textSecondary }}>{item.name}</span>
-                {item.status && <StatusDot status={item.status} />}
-              </div>
-              {item.status ? (
-                <>
-                  <div style={{ fontSize: 20, fontWeight: 600, textTransform: "capitalize" }}>{item.status}</div>
-                  {item.latency && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 4 }}>{item.latency}</div>}
-                </>
+              <Icons.Refresh />
+              Refresh
+            </button>
+            <button
+              onClick={runSimulation}
+              disabled={loading}
+              style={{
+                padding: "10px 20px",
+                borderRadius: "var(--radius-md)",
+                border: "none",
+                background: loading ? "var(--background-tertiary)" : "var(--foreground)",
+                color: loading ? "var(--foreground-muted)" : "var(--background)",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "var(--transition-fast)",
+              }}
+            >
+              {loading ? (
+                <span style={{ 
+                  width: 16, 
+                  height: 16, 
+                  border: "2px solid var(--foreground-muted)", 
+                  borderTopColor: "transparent", 
+                  borderRadius: "50%", 
+                  animation: "spin 1s linear infinite" 
+                }} />
               ) : (
-                <div style={{ fontSize: 28, fontWeight: 600, fontFamily: "monospace" }}>
-                  {item.value}
-                  <span style={{ fontSize: 14, fontWeight: 400, color: theme.textSecondary }}>{item.suffix}</span>
-                </div>
+                <Icons.Play />
               )}
-            </div>
-          ))}
+              {loading ? "Processing..." : "Run Simulation"}
+            </button>
+          </div>
+        </div>
+
+        {/* Metrics Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <MetricCard
+            title="Total Requests"
+            value={metrics.totalRequests}
+            icon={Icons.Activity}
+            change={metrics.totalRequests > 0 ? 12 : undefined}
+            chart={chartData}
+            trend="up"
+          />
+          <MetricCard
+            title="Success Rate"
+            value={metrics.successRate}
+            suffix="%"
+            icon={Icons.Check}
+            change={metrics.successRate === 100 ? 0 : -2}
+          />
+          <MetricCard
+            title="Avg Latency"
+            value={metrics.avgLatency}
+            suffix="ms"
+            icon={Icons.Zap}
+          />
+          <MetricCard
+            title="Uptime"
+            value={metrics.uptime.toFixed(1)}
+            suffix="%"
+            icon={Icons.Cloud}
+          />
+        </div>
+
+        {/* Services Status */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 32 }}>
+          <ServiceCard
+            name="Order Service"
+            description="Handles order processing and fulfillment"
+            status={services.order.status}
+            latency={services.order.latency}
+            port="5002"
+            icon={Icons.Box}
+          />
+          <ServiceCard
+            name="Product Service"
+            description="Manages product catalog and inventory"
+            status={services.product.status}
+            latency={services.product.latency}
+            port="5001"
+            icon={Icons.Database}
+          />
         </div>
 
         {/* Architecture Diagram */}
-        <div style={{ padding: 24, borderRadius: 12, border: `1px solid ${theme.border}`, backgroundColor: theme.bgSecondary, marginBottom: 24 }}>
-          <h3 style={{ margin: "0 0 20px", fontSize: 14, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            System Architecture
-          </h3>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap", padding: "20px 0" }}>
+        <div style={{ 
+          padding: 32, 
+          borderRadius: "var(--radius-xl)", 
+          border: "1px solid var(--border)", 
+          backgroundColor: "var(--background-secondary)", 
+          marginBottom: 32,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--foreground)" }}>
+              System Architecture
+            </h2>
+            <span style={{ 
+              fontSize: 11, 
+              color: "var(--foreground-muted)", 
+              textTransform: "uppercase", 
+              letterSpacing: "0.1em",
+              fontWeight: 500,
+            }}>
+              Live Data Flow
+            </span>
+          </div>
+          
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center", 
+            gap: 4, 
+            flexWrap: "wrap", 
+            padding: "24px 0",
+          }}>
+            <ArchNode label="React" sublabel="Frontend" color="#61dafb" isActive={loading} delay={0} />
+            <ConnectionLine animated={loading} />
+            <ArchNode label="Flask" sublabel="Order API" color="var(--success)" isActive={loading} delay={100} />
+            <ConnectionLine animated={loading} />
+            <ArchNode label="Flask" sublabel="Product API" color="#a855f7" isActive={loading} delay={200} />
+            <ConnectionLine animated={loading} />
+            <ArchNode label="Docker" sublabel="Container" color="#2496ed" isActive={loading} delay={300} />
+            <ConnectionLine animated={loading} />
+            <ArchNode label="K8s" sublabel="Orchestration" color="#326ce5" isActive={loading} delay={400} />
+            <ConnectionLine animated={loading} />
+            <ArchNode label="Redis" sublabel="Cache" color="#dc382d" isActive={loading} delay={500} />
+          </div>
+
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "center", 
+            gap: 24, 
+            marginTop: 16,
+            flexWrap: "wrap",
+          }}>
             {[
-              { label: "React", sub: "Frontend", color: "#61dafb" },
-              { label: "Flask", sub: "Order API", color: theme.success },
-              { label: "Flask", sub: "Product API", color: theme.purple },
-              { label: "Docker", sub: "Container", color: "#2496ed" },
-              { label: "K8s", sub: "Orchestration", color: "#326ce5" },
-              { label: "Redis", sub: "Cache", color: "#dc382d" },
-            ].map((node, i, arr) => (
-              <React.Fragment key={i}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                  <div
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 12,
-                      background: `linear-gradient(135deg, ${node.color}40 0%, ${node.color}20 100%)`,
-                      border: `1px solid ${node.color}60`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: node.color,
-                    }}
-                  >
-                    {node.label}
-                  </div>
-                  <span style={{ fontSize: 11, color: theme.textMuted }}>{node.sub}</span>
-                </div>
-                {i < arr.length - 1 && (
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-                    <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke={theme.textMuted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </React.Fragment>
+              "Service Mesh",
+              "Load Balancing",
+              "Auto Scaling",
+              "Health Probes",
+              "Circuit Breaker",
+            ].map((feature, i) => (
+              <span 
+                key={feature}
+                style={{ 
+                  fontSize: 11, 
+                  color: "var(--foreground-muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Icons.Check />
+                {feature}
+              </span>
             ))}
           </div>
         </div>
 
-        {/* Main Grid */}
+        {/* Response & Logs Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           {/* API Response */}
-          <div style={{ padding: 24, borderRadius: 12, border: `1px solid ${theme.border}`, backgroundColor: theme.bgSecondary }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              API Response
-            </h3>
+          <div style={{ 
+            padding: 24, 
+            borderRadius: "var(--radius-lg)", 
+            border: "1px solid var(--border)", 
+            backgroundColor: "var(--background-secondary)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>API Response</h3>
+              {orderData && (
+                <span style={{ 
+                  fontSize: 11, 
+                  padding: "2px 8px", 
+                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: orderData.status === "success" ? "var(--success-muted)" : "var(--error-muted)",
+                  color: orderData.status === "success" ? "var(--success)" : "var(--error)",
+                  fontWeight: 500,
+                }}>
+                  {orderData.latency}
+                </span>
+              )}
+            </div>
             {loading ? (
-              <div style={{ padding: 40, textAlign: "center" }}>
-                <div style={{ width: 24, height: 24, border: `2px solid ${theme.border}`, borderTopColor: theme.accent, borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 12px" }} />
-                <p style={{ color: theme.textMuted, margin: 0, fontSize: 13 }}>Processing request...</p>
+              <div style={{ padding: 48, textAlign: "center" }}>
+                <div style={{ 
+                  width: 32, 
+                  height: 32, 
+                  border: "3px solid var(--border)", 
+                  borderTopColor: "var(--accent)", 
+                  borderRadius: "50%", 
+                  animation: "spin 1s linear infinite", 
+                  margin: "0 auto 16px",
+                }} />
+                <p style={{ color: "var(--foreground-muted)", margin: 0, fontSize: 13 }}>Processing request...</p>
               </div>
             ) : orderData ? (
-              <pre
-                style={{
-                  margin: 0,
-                  padding: 16,
-                  borderRadius: 8,
-                  backgroundColor: theme.bgTertiary,
-                  fontSize: 13,
-                  fontFamily: "'SF Mono', 'Fira Code', monospace",
-                  overflow: "auto",
-                  lineHeight: 1.6,
-                }}
-              >
+              <pre style={{
+                margin: 0,
+                padding: 16,
+                borderRadius: "var(--radius-md)",
+                backgroundColor: "var(--background-tertiary)",
+                fontSize: 13,
+                fontFamily: "var(--font-mono)",
+                overflow: "auto",
+                lineHeight: 1.6,
+                color: "var(--foreground-secondary)",
+              }}>
                 {JSON.stringify(orderData, null, 2)}
               </pre>
             ) : (
-              <div style={{ padding: 40, textAlign: "center", color: theme.textMuted, fontSize: 13 }}>
-                Run simulation to see API response
+              <div style={{ padding: 48, textAlign: "center" }}>
+                <div style={{ 
+                  width: 48, 
+                  height: 48, 
+                  borderRadius: "var(--radius-lg)",
+                  backgroundColor: "var(--background-tertiary)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                  color: "var(--foreground-muted)",
+                }}>
+                  <Icons.Terminal />
+                </div>
+                <p style={{ color: "var(--foreground-muted)", margin: 0, fontSize: 13 }}>
+                  Run simulation to see API response
+                </p>
               </div>
             )}
           </div>
 
-          {/* Logs */}
-          <div style={{ padding: 24, borderRadius: 12, border: `1px solid ${theme.border}`, backgroundColor: theme.bgSecondary }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              System Logs
-            </h3>
-            <div
-              style={{
-                maxHeight: 280,
-                overflow: "auto",
-                fontFamily: "'SF Mono', 'Fira Code', monospace",
-                fontSize: 12,
-                backgroundColor: theme.bgTertiary,
-                borderRadius: 8,
-                padding: logs.length ? 12 : 0,
-              }}
-            >
+          {/* System Logs */}
+          <div style={{ 
+            padding: 24, 
+            borderRadius: "var(--radius-lg)", 
+            border: "1px solid var(--border)", 
+            backgroundColor: "var(--background-secondary)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>System Logs</h3>
+              {logs.length > 0 && (
+                <span style={{ fontSize: 11, color: "var(--foreground-muted)" }}>
+                  {logs.length} entries
+                </span>
+              )}
+            </div>
+            <div style={{
+              maxHeight: 280,
+              overflow: "auto",
+              backgroundColor: "var(--background-tertiary)",
+              borderRadius: "var(--radius-md)",
+              padding: logs.length ? 16 : 0,
+            }}>
               {logs.length > 0 ? (
-                logs.map((log) => (
-                  <div key={log.id} style={{ marginBottom: 6, display: "flex", gap: 8 }}>
-                    <span style={{ color: theme.textMuted, flexShrink: 0 }}>[{log.timestamp}]</span>
-                    <span
-                      style={{
-                        color: log.type === "error" ? theme.error : log.type === "success" ? theme.success : log.type === "warning" ? theme.warning : theme.textSecondary,
-                      }}
-                    >
-                      {log.message}
-                    </span>
-                  </div>
+                logs.slice(0, 15).map((log) => (
+                  <LogEntry key={log.id} {...log} />
                 ))
               ) : (
-                <div style={{ padding: 40, textAlign: "center", color: theme.textMuted }}>
-                  No logs yet
+                <div style={{ padding: 48, textAlign: "center" }}>
+                  <p style={{ color: "var(--foreground-muted)", margin: 0, fontSize: 13 }}>
+                    No logs yet — run a simulation
+                  </p>
                 </div>
               )}
             </div>
@@ -446,70 +960,143 @@ function App() {
 
         {/* Request History */}
         {requestHistory.length > 0 && (
-          <div style={{ marginTop: 24, padding: 24, borderRadius: 12, border: `1px solid ${theme.border}`, backgroundColor: theme.bgSecondary }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Request History
-            </h3>
+          <div style={{ 
+            marginTop: 24, 
+            padding: 24, 
+            borderRadius: "var(--radius-lg)", 
+            border: "1px solid var(--border)", 
+            backgroundColor: "var(--background-secondary)",
+          }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600 }}>Request History</h3>
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
-              {requestHistory.map((req, i) => (
+              {requestHistory.slice(0, 12).map((req, i) => (
                 <div
                   key={i}
+                  className="animate-scale-in"
                   style={{
-                    padding: "12px 16px",
-                    borderRadius: 8,
-                    backgroundColor: theme.bgTertiary,
-                    border: `1px solid ${req.status === "success" ? theme.success : theme.error}30`,
-                    minWidth: 100,
+                    padding: "14px 18px",
+                    borderRadius: "var(--radius-md)",
+                    backgroundColor: "var(--background-tertiary)",
+                    border: `1px solid ${req.status === "success" ? "var(--success)" : "var(--error)"}30`,
+                    minWidth: 90,
                     textAlign: "center",
+                    animationDelay: `${i * 50}ms`,
                   }}
                 >
-                  <div style={{ fontSize: 18, fontWeight: 600, color: req.status === "success" ? theme.success : theme.error }}>{req.latency}ms</div>
-                  <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>{req.time}</div>
+                  <div style={{ 
+                    fontSize: 18, 
+                    fontWeight: 700, 
+                    fontFamily: "var(--font-mono)",
+                    color: req.status === "success" ? "var(--success)" : "var(--error)",
+                  }}>
+                    {req.latency}
+                    <span style={{ fontSize: 11, fontWeight: 400 }}>ms</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--foreground-muted)", marginTop: 4 }}>
+                    {req.time}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* Technology Stack */}
+        <div style={{ 
+          marginTop: 32, 
+          padding: 32, 
+          borderRadius: "var(--radius-xl)", 
+          border: "1px solid var(--border)", 
+          backgroundColor: "var(--background-secondary)",
+        }}>
+          <h2 style={{ margin: "0 0 24px", fontSize: 16, fontWeight: 600, textAlign: "center" }}>
+            Technology Stack
+          </h2>
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
+            gap: 16,
+          }}>
+            {[
+              { name: "Docker", desc: "Containerization", color: "#2496ed" },
+              { name: "Kubernetes", desc: "Orchestration", color: "#326ce5" },
+              { name: "Flask", desc: "Python API", color: "#22c55e" },
+              { name: "React", desc: "Frontend UI", color: "#61dafb" },
+              { name: "Redis", desc: "Distributed Cache", color: "#dc382d" },
+              { name: "GitHub Actions", desc: "CI/CD Pipeline", color: "#ffffff" },
+            ].map((tech) => (
+              <div
+                key={tech.name}
+                style={{
+                  padding: 16,
+                  borderRadius: "var(--radius-md)",
+                  backgroundColor: "var(--background-tertiary)",
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  transition: "var(--transition-fast)",
+                }}
+              >
+                <div style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  backgroundColor: tech.color,
+                }} />
+                <div>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{tech.name}</span>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--foreground-muted)" }}>{tech.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Footer */}
-        <footer style={{ marginTop: 48, paddingTop: 24, borderTop: `1px solid ${theme.border}`, textAlign: "center" }}>
-          <p style={{ margin: 0, color: theme.textMuted, fontSize: 13 }}>
-            Cloud-Native Microservices | Docker + Kubernetes + Redis
+        <footer style={{ marginTop: 48, paddingTop: 32, borderTop: "1px solid var(--border)", textAlign: "center" }}>
+          <p style={{ margin: 0, color: "var(--foreground-muted)", fontSize: 13 }}>
+            Cloud-Native Microservices Architecture | Docker + Kubernetes + Redis
           </p>
-          <p style={{ margin: "8px 0 0", color: theme.textMuted, fontSize: 12 }}>
+          <p style={{ margin: "8px 0 0", color: "var(--foreground-muted)", fontSize: 12 }}>
             Built with React, Flask, and containerized with Docker
           </p>
+          <div style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 16 }}>
+            <a
+              href="https://github.com/Fadydesoky/Mobile-Cloud-System"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "var(--foreground-secondary)",
+                fontSize: 13,
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "var(--transition-fast)",
+              }}
+            >
+              View on GitHub <Icons.External />
+            </a>
+            <a
+              href="https://www.linkedin.com/in/fadydesokysaeedabdelaziz/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "var(--foreground-secondary)",
+                fontSize: 13,
+                textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "var(--transition-fast)",
+              }}
+            >
+              LinkedIn <Icons.External />
+            </a>
+          </div>
         </footer>
       </main>
-
-      {/* Global Styles */}
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        * {
-          box-sizing: border-box;
-        }
-        body {
-          margin: 0;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-          -webkit-font-smoothing: antialiased;
-        }
-        ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: ${theme.border};
-          border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: ${theme.borderHover};
-        }
-      `}</style>
     </div>
   );
 }
