@@ -87,3 +87,4 @@ if __name__ == "__main__":
         "http://product-service:5001"
     )
     PORT = int(os.getenv("ORDER_SERVICE_PORT", 5002))
+app.run(host="0.0.0.0", port=PORT)
