@@ -22,6 +22,9 @@ This repository contains implementations for Mobile and Cloud Computing labs.
 ### Redis Simulation (Distributed System)
 ![Redis Simulation](Lab2/screenshots/redis-simulation.png)
 
+### Latency Histogram
+![Latency](Lab1/screenshots/latency.png)
+
 ## Technologies Used
 
 - Docker (Image building & containerization)
