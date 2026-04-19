@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 function App() {
   const [dark, setDark] = useState(true);
@@ -8,48 +8,57 @@ function App() {
   const [logs, setLogs] = useState([]);
   const [status, setStatus] = useState("Idle");
 
-  // ✅ Auto simulation (اختياري)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      runDemo();
-    }, 8000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const runDemo = () => {
+  const runDemo = async () => {
     setLoading(true);
-    setStatus("Initializing...");
+    setStatus("Running...");
     setLogs([]);
-    setDelay(null);
     setData([]);
+    setDelay(null);
 
-    const steps = [
-      "Request received",
-      "Processing in container",
-      "Scheduled via Kubernetes",
-      "Fetching from Redis",
-      "Returning response"
-    ];
+    const start = performance.now();
 
-    steps.forEach((step, i) => {
-      setTimeout(() => {
-        setLogs((prev) => [...prev, `[INFO] ${step}`]);
+    try {
+      const res = await fetch("http://130.41.39.7:5002/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ product_id: 1, quantity: 2 }),
+      });
 
-        if (i === steps.length - 1) {
-          const newDelay = (Math.random() * 1.5).toFixed(2);
-          const newData = Array.from({ length: 5 }, () =>
-            Math.floor(Math.random() * 100)
-          );
+      const result = await res.json();
 
-          setDelay(newDelay);
-          setData(newData);
-          setStatus("Healthy ✅");
-          setLoading(false);
-        } else {
-          setStatus(step + "...");
-        }
-      }, i * 700);
-    });
+      const end = performance.now();
+      const latency = ((end - start) / 1000).toFixed(2);
+
+      setDelay(latency);
+
+      setData({
+        product: result.product || "N/A",
+        quantity: result.quantity || 0,
+        total_price: result.total_price || 0,
+      });
+
+      setLogs([
+        "[INFO] Request sent to Order Service",
+        "[INFO] Order Service processing",
+        "[INFO] Fetching from Product Service",
+        "[INFO] Response received",
+        "[SUCCESS] Order completed",
+      ]);
+
+      setStatus("Healthy");
+    } catch (err) {
+      setStatus("Failed");
+
+      setLogs([
+        "[ERROR] Service unavailable",
+        "[ERROR] Product service down",
+        "[INFO] Retry or recovery needed",
+      ]);
+    }
+
+    setLoading(false);
   };
 
   const theme = {
@@ -61,17 +70,17 @@ function App() {
 
   return (
     <div style={{ ...styles.container, background: theme.bg, color: theme.text }}>
-
+      
       {/* Header */}
       <div style={styles.header}>
-        <h1>🚀 Mobile Cloud Dashboard</h1>
+        <h1 style={{ margin: 0 }}>🚀 Mobile Cloud Dashboard</h1>
         <button onClick={() => setDark(!dark)} style={styles.toggle}>
           {dark ? "Light" : "Dark"}
         </button>
       </div>
 
       <p style={{ color: theme.sub }}>
-        Cloud-native simulation (Frontend → API → Docker → K8s → Redis)
+        Real microservices demo (Frontend → Order Service → Product Service)
       </p>
 
       {/* Flow */}
@@ -79,7 +88,7 @@ function App() {
         📱 → ⚙️ → 🐳 → ☸️ → 🟥
       </div>
 
-      {/* Button */}
+      {/* Run */}
       <button style={styles.runBtn} onClick={runDemo}>
         {loading ? "Running..." : "Run Simulation"}
       </button>
@@ -88,10 +97,12 @@ function App() {
       <div style={{ marginTop: 10 }}>
         <span style={{
           color:
-            status.includes("Healthy")
+            status === "Healthy"
               ? "limegreen"
-              : status.includes("...")
+              : status === "Running..."
               ? "orange"
+              : status === "Failed"
+              ? "red"
               : "gray",
         }}>
           ● {status}
@@ -104,12 +115,17 @@ function App() {
         {/* API */}
         <div style={{ ...styles.card, background: theme.card }}>
           <h3>API</h3>
+
           {loading ? (
             <div style={styles.skeleton} />
           ) : (
             <pre>
 {delay
-  ? JSON.stringify({ message: "Mobile Cloud API", delay }, null, 2)
+  ? JSON.stringify(
+      { message: "Order API", latency: delay + "s" },
+      null,
+      2
+    )
   : "No data"}
             </pre>
           )}
@@ -118,34 +134,36 @@ function App() {
         {/* Data */}
         <div style={{ ...styles.card, background: theme.card }}>
           <h3>Data</h3>
+
           {loading ? (
             <div style={styles.skeleton} />
           ) : (
-            <p>{data.length ? data.join(", ") : "No data"}</p>
+            <pre>
+{data.product
+  ? JSON.stringify(data, null, 2)
+  : "No data"}
+            </pre>
           )}
         </div>
 
         {/* Logs */}
         <div style={{ ...styles.card, background: theme.card }}>
           <h3>Logs</h3>
-          <div style={styles.logs}>
-            {logs.length
-              ? logs.map((l, i) => <p key={i}>• {l}</p>)
-              : "No logs"}
-          </div>
+
+          {loading ? (
+            <div style={styles.skeleton} />
+          ) : (
+            <div style={styles.logs}>
+              {logs.length
+                ? logs.map((l, i) => <p key={i}>{l}</p>)
+                : "No logs"}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 🔥 Metrics (NEW) */}
-      <div style={styles.metrics}>
-        <h3>📊 Benchmark</h3>
-        <p>Container Startup: ~1.2s</p>
-        <p>VM Startup: ~45s</p>
-        <p>Latency: ~{delay || "--"}s</p>
-      </div>
-
-      <p style={{ marginTop: 30, fontSize: 12, color: theme.sub }}>
-        Powered by simulated cloud-native pipeline
+      <p style={{ marginTop: 40, fontSize: 12, color: theme.sub }}>
+        Live backend connected — not simulated
       </p>
     </div>
   );
@@ -157,7 +175,6 @@ const styles = {
     padding: "40px",
     fontFamily: "system-ui",
     textAlign: "center",
-    transition: "0.3s",
   },
   header: {
     display: "flex",
@@ -194,6 +211,8 @@ const styles = {
     width: "260px",
     padding: "20px",
     borderRadius: "12px",
+    textAlign: "left",
+    boxShadow: "0 0 10px rgba(0,0,0,0.1)",
   },
   logs: {
     fontSize: "12px",
@@ -203,10 +222,6 @@ const styles = {
     height: "60px",
     background: "linear-gradient(90deg,#333,#555,#333)",
     borderRadius: "8px",
-  },
-  metrics: {
-    marginTop: 30,
-    opacity: 0.9,
   },
 };
 
