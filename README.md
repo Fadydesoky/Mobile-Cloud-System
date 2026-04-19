@@ -63,7 +63,7 @@ Sample response from the backend:
 {
   "message": "Mobile Cloud API",
   "delay": 0.73
-  }
+}
 
 ## Screenshots
 
