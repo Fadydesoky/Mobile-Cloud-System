@@ -5,10 +5,12 @@
 👉 https://fadydesoky.github.io/Mobile-Cloud-System/
 
 ![CI](https://github.com/Fadydesoky/Mobile-Cloud-System/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/Fadydesoky/Mobile-Cloud-System/branch/main/graph/badge.svg)](https://codecov.io/gh/Fadydesoky/Mobile-Cloud-System)
 ![Docker](https://img.shields.io/badge/Docker-Containerization-blue)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-Orchestration-blueviolet)
 ![Python](https://img.shields.io/badge/Python-Flask-yellow)
 ![Redis](https://img.shields.io/badge/Redis-Distributed_System-red)
+![Prometheus](https://img.shields.io/badge/Prometheus-Metrics-orange)
 ![Cloud](https://img.shields.io/badge/Cloud-Computing-green)
 ![Status](https://img.shields.io/badge/Project-Completed-success)
 
@@ -68,9 +70,22 @@ End-to-end flow: Frontend → Flask API → Container → Kubernetes → Redis
 
 ## API Endpoints
 
-- GET `/` → Returns response time with simulated delay  
-- GET `/data?size=100` → Returns generated dataset  
-- GET `/health` → Returns service status
+### Lab3 - Mobile Cloud API
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Returns response time with simulated delay |
+| `/data?size=100` | GET | Returns generated dataset |
+| `/health` | GET | Liveness probe - service status |
+| `/ready` | GET | Readiness probe - traffic acceptance |
+| `/metrics` | GET | Prometheus metrics |
+
+### Lab4 - Microservices
+| Service | Endpoint | Description |
+|---------|----------|-------------|
+| Product | `/products` | List all products |
+| Product | `/products/:id` | Get product by ID |
+| Order | `/orders` | Create order (POST) |
+| Both | `/health`, `/ready`, `/metrics` | Observability endpoints |
   
 ---
 
@@ -187,19 +202,73 @@ Both services run in isolated containers and communicate over the Docker interna
   
 ---
 
-## CI/CD
+## CI/CD Pipeline
 
-A production-style CI/CD pipeline is implemented using GitHub Actions.
+A production-grade CI/CD pipeline is implemented using GitHub Actions with comprehensive quality gates.
 
-The pipeline automatically validates and prepares the system on every push:
+### Pipeline Stages
 
-- Backend validation (Python syntax & linting)  
-- Frontend build verification (React)  
-- Docker image build validation  
-- Automated frontend deployment via GitHub Pages  
+| Stage | Description |
+|-------|-------------|
+| **Backend Tests** | Unit tests with pytest across Python 3.9, 3.10, 3.11 |
+| **Code Quality** | Linting with flake8, formatting checks with black |
+| **Security Scan** | SAST with Bandit, dependency scanning with Safety |
+| **Frontend Build** | React build and test verification |
+| **Docker Build** | Multi-stage builds with layer caching |
+| **Container Scan** | Trivy vulnerability scanning |
+| **Integration Tests** | Docker Compose end-to-end testing |
+| **Deploy** | Automated GitHub Pages deployment |
 
-This ensures the system is consistently buildable, deployable, and aligned with modern cloud-native development practices.
+### Quality Gates
 
+- All tests must pass before deployment
+- Security scans identify vulnerabilities
+- Code coverage reports uploaded to Codecov
+- Concurrent builds are cancelled to save resources
+
+## Observability
+
+All services include production-ready observability features:
+
+### Health Checks
+- `/health` - Liveness probe (is the service running?)
+- `/ready` - Readiness probe (can the service accept traffic?)
+
+### Prometheus Metrics
+- `/metrics` - Prometheus-format metrics endpoint
+- Request counters by endpoint and status
+- Request latency histograms
+- Custom business metrics
+
+### Logging
+- Structured logging with timestamps
+- Request/response logging
+- Error tracking with stack traces
+
+
+---
+
+## Testing
+
+The project includes comprehensive test suites for all services:
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+
+# Run specific lab tests
+pytest Lab3/tests/ -v
+pytest Lab4/tests/ -v
+```
+
+### Test Coverage
+- Unit tests for all API endpoints
+- Integration tests with Docker Compose
+- Mock-based testing for service dependencies
+- Health and readiness probe validation
 
 ---
 
