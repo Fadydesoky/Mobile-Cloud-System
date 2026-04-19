@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 function App() {
   const [dark, setDark] = useState(true);
@@ -14,6 +14,13 @@ function App() {
     setLogs([]);
     setDelay(null);
     setData([]);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        runDemo();
+      }, 4000);
+      return () => clearInterval(interval);
+    }, []);  
 
     setTimeout(() => {
       const newDelay = (Math.random() * 1.5).toFixed(2);
@@ -197,5 +204,7 @@ const styles = {
     animation: "pulse 1.2s infinite",
   },
 };
+
+Demo environment — backend simulated
 
 export default App;
