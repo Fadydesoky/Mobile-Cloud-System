@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mobile-cloud-api-service
+  namespace: mobile-cloud-system
+  labels:
+    app: mobile-cloud-api
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  selector:
+    app: mobile-cloud-api
+  sessionAffinity: None
+  externalTrafficPolicy: Cluster
