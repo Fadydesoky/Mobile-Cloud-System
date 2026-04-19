@@ -82,4 +82,8 @@ def create_order():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5002)
+    PRODUCT_SERVICE_URL = os.getenv(
+        "PRODUCT_SERVICE_URL",
+        "http://product-service:5001"
+    )
+    PORT = int(os.getenv("ORDER_SERVICE_PORT", 5002))
