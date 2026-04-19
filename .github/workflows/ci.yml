@@ -3,8 +3,9 @@ name: CI Pipeline
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+
+permissions:
+  contents: write
 
 jobs:
 
@@ -86,6 +87,7 @@ jobs:
     name: Deploy Frontend
     runs-on: ubuntu-latest
     needs: [frontend]
+    permissions: write-all
 
     steps:
       - uses: actions/checkout@v4
