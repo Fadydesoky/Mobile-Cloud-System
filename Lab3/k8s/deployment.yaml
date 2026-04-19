@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobile-cloud-api
+  namespace: mobile-cloud-system
+  labels:
+    app: mobile-cloud-api
+    version: "1.0.0"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: mobile-cloud-api
+  template:
+    metadata:
+      labels:
+        app: mobile-cloud-api
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+    spec:
+      containers:
+      - name: api
+        image: mobile-cloud-system:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 5000
+          protocol: TCP
+        # Environment variables
+        env:
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: app_env
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: log_level
+        - name: MAX_DATA_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: max_data_size
+        - name: MIN_DELAY
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: min_delay
+        - name: MAX_DELAY
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: max_delay
+        - name: CORS_ORIGIN
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: cors_origin
+        # Resource limits and requests
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        # Liveness probe: Kubernetes will restart pod if it fails
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        # Readiness probe: Kubernetes will stop sending traffic if it fails
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        # Security context
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        # Graceful shutdown
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 5"]
+      # Pod security and scheduling
+      securityContext:
+        fsGroup: 1000
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - mobile-cloud-api
+              topologyKey: kubernetes.io/hostname
+      terminationGracePeriodSeconds: 30
