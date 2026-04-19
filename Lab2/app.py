@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 
 # ============================
-# Redis Configuration
+# Redis Config
 # ============================
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -29,9 +29,8 @@ def init_redis_connections():
         )
         redis_primary.ping()
         print("✅ Connected to PRIMARY Redis")
-
     except Exception as e:
-        print("❌ Primary Redis failed:", e)
+        print("❌ Primary Redis error:", e)
         redis_primary = None
 
     try:
@@ -42,9 +41,8 @@ def init_redis_connections():
         )
         redis_replica.ping()
         print("✅ Connected to REPLICA Redis")
-
     except Exception as e:
-        print("❌ Replica Redis failed:", e)
+        print("❌ Replica Redis error:", e)
         redis_replica = None
 
 
@@ -61,13 +59,10 @@ def home():
 
 
 # ----------------------------
-# WRITE (Primary)
+# WRITE → Primary
 # ----------------------------
 @app.route("/write", methods=["POST"])
 def write():
-    """
-    Write data to PRIMARY Redis
-    """
     data = request.get_json()
 
     if not data or "key" not in data or "value" not in data:
@@ -89,13 +84,10 @@ def write():
 
 
 # ----------------------------
-# READ (Primary)
+# READ → Primary
 # ----------------------------
 @app.route("/read")
 def read():
-    """
-    Read from PRIMARY Redis
-    """
     key = request.args.get("key", "test_key")
 
     if not redis_primary:
@@ -111,13 +103,10 @@ def read():
 
 
 # ----------------------------
-# READ (Replica)
+# READ → Replica
 # ----------------------------
 @app.route("/read-replica")
 def read_replica():
-    """
-    Read from REPLICA Redis (eventual consistency)
-    """
     key = request.args.get("key", "test_key")
 
     if not redis_replica:
@@ -138,10 +127,6 @@ def read_replica():
 # ----------------------------
 @app.route("/status")
 def status():
-    """
-    Check Redis health
-    """
-
     def check(r):
         try:
             r.ping()
@@ -156,7 +141,7 @@ def status():
 
 
 # ----------------------------
-# HEALTH (for Docker/K8s)
+# HEALTH
 # ----------------------------
 @app.route("/health")
 def health():
@@ -164,7 +149,7 @@ def health():
 
 
 # ----------------------------
-# READY (important for K8s)
+# READY (for K8s)
 # ----------------------------
 @app.route("/ready")
 def ready():
@@ -179,7 +164,7 @@ def ready():
 
 
 # ============================
-# Main
+# MAIN
 # ============================
 
 if __name__ == "__main__":
@@ -187,66 +172,6 @@ if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-        port=5001,
-        debug=True
-    )
-    key = request.args.get("key", "test_key")
-
-    if redis_replica:
-        value = redis_replica.get(key)
-        return jsonify({
-            "source": "replica",
-            "key": key,
-            "value": value,
-            "note": "eventual consistency"
-        })
-    else:
-        return jsonify({"error": "Replica unavailable"}), 503
-
-
-@app.route('/status')
-def status():
-    """
-    Check system status
-    """
-
-    def check(r):
-        try:
-            r.ping()
-            return "healthy"
-        except:
-            return "down"
-
-    return jsonify({
-        "primary": check(redis_primary) if redis_primary else "missing",
-        "replica": check(redis_replica) if redis_replica else "missing"
-    })
-
-
-@app.route('/health')
-def health():
-    return "ok", 200
-
-
-@app.route('/ready')
-def ready():
-    if redis_primary:
-        try:
-            redis_primary.ping()
-            return "ready", 200
-        except:
-            return "not ready", 503
-    return "not ready", 503
-
-
-# ============================
-# Main
-# ============================
-if __name__ == '__main__':
-    init_redis_connections()
-
-    app.run(
-        host='0.0.0.0',
         port=5001,
         debug=True
     )
