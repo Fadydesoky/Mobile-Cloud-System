@@ -24,6 +24,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "5000"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: api
@@ -85,7 +86,7 @@ spec:
         # Readiness probe: Kubernetes will stop sending traffic if it fails
         readinessProbe:
           httpGet:
-            path: /status
+            path: /ready
             port: http
           initialDelaySeconds: 5
           periodSeconds: 5
