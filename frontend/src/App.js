@@ -1,61 +1,100 @@
-import { useState } from "react";
-import axios from "axios";
-
-const API = "http://localhost:5000";
+import React, { useState } from "react";
+import "./App.css";
 
 function App() {
-  const [homeData, setHomeData] = useState(null);
-  const [data, setData] = useState(null);
-  const [health, setHealth] = useState(null);
-  const [size, setSize] = useState(100);
+  const [api, setApi] = useState(null);
+  const [data, setData] = useState([]);
+  const [health, setHealth] = useState("");
 
-  const fetchHome = async () => {
-    const res = await axios.get(`${API}/`);
-    setHomeData(res.data);
-  };
+  const runDemo = () => {
+    setApi({
+      message: "Mobile Cloud API",
+      delay: (Math.random() * 1.5).toFixed(2),
+    });
 
-  const fetchData = async () => {
-    const res = await axios.get(`${API}/data?size=${size}`);
-    setData(res.data);
-  };
+    setData(
+      Array.from({ length: 5 }, () =>
+        Math.floor(Math.random() * 100)
+      )
+    );
 
-  const checkHealth = async () => {
-    const res = await axios.get(`${API}/health`);
-    setHealth(res.data);
+    setHealth("OK");
   };
 
   return (
-    <div className="container">
-      <h1>Mobile Cloud Dashboard</h1>
+    <div style={styles.container}>
+      <h1>Mobile Cloud System Dashboard</h1>
+      <p style={{ color: "#aaa" }}>
+        Simulating a cloud-native architecture
+      </p>
 
-      <div className="card">
-        <h2>Response Time</h2>
-        <button onClick={fetchHome}>Fetch</button>
-        {homeData && (
-          <p>Delay: {homeData.delay}s</p>
-        )}
+      <button style={styles.button} onClick={runDemo}>
+        🚀 Run Demo
+      </button>
+
+      <div style={styles.flow}>
+        Frontend → API → Docker → Kubernetes → Redis
       </div>
 
-      <div className="card">
-        <h2>Data Endpoint</h2>
-        <input
-          type="number"
-          value={size}
-          onChange={(e) => setSize(e.target.value)}
-        />
-        <button onClick={fetchData}>Get Data</button>
-        {data && (
-          <p>Count: {data.count}</p>
-        )}
+      <div style={styles.cards}>
+        <div style={styles.card}>
+          <h3>API Response</h3>
+          <pre>{api ? JSON.stringify(api, null, 2) : "No data"}</pre>
+        </div>
+
+        <div style={styles.card}>
+          <h3>Data</h3>
+          <p>{data.length ? data.join(", ") : "No data"}</p>
+        </div>
+
+        <div style={styles.card}>
+          <h3>Health</h3>
+          <p>{health || "No data"}</p>
+        </div>
       </div>
 
-      <div className="card">
-        <h2>Health Check</h2>
-        <button onClick={checkHealth}>Check</button>
-        {health && <p>Status: {health}</p>}
-      </div>
+      <p style={{ marginTop: 40, fontSize: 12, color: "#888" }}>
+        Simulated environment for demonstration purposes
+      </p>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    background: "#0d1117",
+    color: "white",
+    minHeight: "100vh",
+    textAlign: "center",
+    padding: "40px",
+    fontFamily: "Arial",
+  },
+  button: {
+    padding: "10px 20px",
+    fontSize: "16px",
+    margin: "20px 0",
+    cursor: "pointer",
+    borderRadius: "8px",
+    border: "none",
+    background: "#238636",
+    color: "white",
+  },
+  flow: {
+    margin: "20px 0",
+    color: "#58a6ff",
+  },
+  cards: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "20px",
+    flexWrap: "wrap",
+  },
+  card: {
+    background: "#161b22",
+    padding: "20px",
+    borderRadius: "10px",
+    width: "250px",
+  },
+};
 
 export default App;
