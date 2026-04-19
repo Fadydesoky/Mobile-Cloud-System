@@ -33,6 +33,9 @@ Endpoints:
 
 Logging is used to monitor requests and simulate observability in cloud systems.
 
+![Architecture Diagram](screenshots/architecture-diagram.png)
+This diagram illustrates the interaction between mobile clients, the Flask API, Kubernetes orchestration, and optional Redis integration.
+
 ---
 
 ## Observations
