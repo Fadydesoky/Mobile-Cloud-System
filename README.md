@@ -5,6 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-Flask-yellow)
 ![Redis](https://img.shields.io/badge/Redis-Distributed_System-red)
 ![Cloud](https://img.shields.io/badge/Cloud-Computing-green)
+![Status](https://img.shields.io/badge/Project-Completed-success)
 
 ---
 
