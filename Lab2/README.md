@@ -7,7 +7,7 @@ This lab explores distributed systems concepts such as consistency, replication,
 
 ## Application Overview
 
-A minimal distributed setup was considered using two Redis nodes:
+A minimal distributed setup was simulated using two Redis nodes:
 - redis1 (primary node)
 - redis2 (secondary node)
 
@@ -31,6 +31,12 @@ This demonstrates how applications interact with distributed systems in real-wor
 ![Redis Simulation](screenshots/redis-simulation.png)
 
 ---
+
+## Experiment Steps
+
+1. A value was written to the primary node.
+2. The same value was requested from the secondary node.
+3. The results were compared between both nodes.
 
 ## Observation
 
@@ -92,7 +98,7 @@ Systems like etcd use the Raft algorithm to:
 
 ## Key Insight
 
-Even a simple distributed setup demonstrates real-world challenges in maintaining consistency, highlighting the importance of system design in cloud environments.
+Even a simple distributed setup demonstrates real-world challenges in maintaining consistency, highlighting the importance of system design in cloud environments. This highlights the trade-offs between consistency and availability in distributed systems.
 
 ---
 
