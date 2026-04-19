@@ -16,6 +16,18 @@ The project demonstrates how modern cloud-native applications are built using co
 
 ---
 
+## Project Summary
+
+This project presents a complete end-to-end cloud-native system that simulates real-world mobile-cloud interaction.
+
+It integrates a frontend client, a containerized backend API, and distributed system components, all orchestrated through modern DevOps practices.
+
+The system demonstrates how applications are built, deployed, and managed using Docker, Kubernetes concepts, and automated CI/CD pipelines.
+
+Overall, the project reflects a practical understanding of cloud computing, system design, and scalable architecture patterns.
+
+---
+
 ## System Architecture
 
 The following diagram illustrates the overall architecture of the project, connecting mobile clients, cloud services, and distributed systems:
@@ -132,7 +144,6 @@ The pipeline automatically validates and prepares the system on every push:
 
 This ensures the system is consistently buildable, deployable, and aligned with modern cloud-native development practices.
 
-![CI](https://github.com/Fadydesoky/Mobile-Cloud-System/actions/workflows/ci.yml/badge.svg)
 
 ---
 
