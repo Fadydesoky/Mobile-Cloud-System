@@ -4,9 +4,9 @@ This repository contains implementations for Mobile and Cloud Computing labs.
 
 ## Labs
 
-- Lab 1: Virtualization and Cloud Basics
-- Lab 2: Distributed Systems Concepts
-- Lab 3: Docker and Kubernetes
+- **Lab 1:** Virtualization and Cloud Basics  
+- **Lab 2:** Distributed Systems (Redis Simulation)  
+- **Lab 3:** Containerization and Kubernetes Orchestration  
 
 ## Screenshots
 
@@ -19,15 +19,27 @@ This repository contains implementations for Mobile and Cloud Computing labs.
 ### Kubernetes Pods
 ![Kubernetes Pods](screenshots/k8s-pods.png)
 
+### Redis Simulation (Distributed System)
+![Redis Simulation](Lab2/screenshots/redis-simulation.png)
+
 ## Technologies Used
 
-- Docker
-- Python (Flask)
-- Kubernetes (YAML configurations)
+- Docker (Image building & containerization)
+- Python (Flask web application)
+- Kubernetes (Deployment & orchestration concepts)
+- Redis (Distributed system behavior simulation)
 
 ## Key Learnings
 
 - Difference between virtualization and containerization
-- Practical Docker image optimization
-- Basics of Kubernetes orchestration
+- Docker image optimization using multi-stage builds
+- Basics of Kubernetes orchestration (Deployment, Service, Probes)
+- Distributed systems concepts such as eventual consistency
+- Understanding system behavior through simulation and analysis
 
+---
+
+## Notes
+
+This project focuses on combining practical configurations with conceptual understanding of cloud-native systems.  
+Some components are demonstrated through simulation and analysis to reflect real-world system behavior.
