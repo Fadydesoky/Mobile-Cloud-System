@@ -1,5 +1,9 @@
 # Mobile-Cloud-System
 
+## 🚀 Live Demo
+
+👉 https://fadydesoky.github.io/Mobile-Cloud-System/
+
 ![CI](https://github.com/Fadydesoky/Mobile-Cloud-System/actions/workflows/ci.yml/badge.svg)
 ![Docker](https://img.shields.io/badge/Docker-Containerization-blue)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-Orchestration-blueviolet)
@@ -191,3 +195,7 @@ This project combines practical implementations with conceptual understanding of
 Some components are demonstrated through simulation to reflect real-world system behavior while maintaining alignment with modern cloud architecture patterns.
 
 Overall, the project represents a simplified end-to-end cloud-native system, covering client interaction, backend services, and orchestration in a unified workflow.
+
+## Contact
+
+- LinkedIn: https://www.linkedin.com/in/fadydesokysaeedabdelaziz/
