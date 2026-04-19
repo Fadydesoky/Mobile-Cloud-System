@@ -1,4 +1,8 @@
-{
-  "projectId": "prj_oPC6SzeRTqV5x5j9gSb1gXeHgOH0",
-  "orgId": "team_be2iaJejNzRduaueigTOWqVa"
-}
+  {
+    "projectId": "prj_oPC6SzeRTqV5x5j9gSb1gXeHgOH0",
+    "orgId": "team_be2iaJejNzRduaueigTOWqVa"
+  <<<<<<< fix-bugs-and-enhance
+  }
+  =======
+  }
+  >>>>>>> main
