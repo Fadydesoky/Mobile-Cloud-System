@@ -121,13 +121,18 @@ Sample response from the backend:
 
 ## CI/CD
 
-A lightweight CI pipeline is implemented using GitHub Actions to validate:
+A production-style CI/CD pipeline is implemented using GitHub Actions.
 
-- Backend code integrity  
-- Frontend build process  
-- Docker image creation  
+The pipeline automatically validates and prepares the system on every push:
 
-This ensures the system is consistently buildable and production-ready.
+- Backend validation (Python syntax & linting)  
+- Frontend build verification (React)  
+- Docker image build validation  
+- Automated frontend deployment via GitHub Pages  
+
+This ensures the system is consistently buildable, deployable, and aligned with modern cloud-native development practices.
+
+![CI](https://github.com/Fadydesoky/Mobile-Cloud-System/actions/workflows/ci.yml/badge.svg)
 
 ---
 
