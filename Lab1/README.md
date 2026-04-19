@@ -7,6 +7,14 @@ This lab explores virtualization concepts, cloud infrastructure, and latency beh
 Containers are lightweight and start quickly.
 Virtual Machines provide stronger isolation but consume more resources.
 
+## VM vs Container Observation
+
+Containers started in seconds with minimal memory usage, while virtual machines required significantly more time and resources.
+
+## Latency Analysis
+
+The response time distribution showed a long tail due to random delays, indicating variability under concurrent load.
+
 ## AWS Nitro
 AWS uses Nitro Hypervisor to improve performance and security by offloading virtualization tasks to hardware.
 
