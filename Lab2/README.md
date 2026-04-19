@@ -92,4 +92,5 @@ This lab demonstrates how distributed systems handle data consistency and replic
 It shows that:
 - Data consistency is not always immediate  
 - Distributed systems require trade-offs  
-- System design plays a critical role in performance and reliability  
+- System design plays a critical role in performance and reliability
+- The setup can be extended to include replication between nodes to simulate real-world distributed systems behavior.
