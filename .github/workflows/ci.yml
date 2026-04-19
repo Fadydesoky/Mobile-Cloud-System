@@ -34,28 +34,33 @@ jobs:
       - run: |
           flake8 Lab2 Lab3 || true
 
-  frontend:
-    name: Frontend Build
-    runs-on: ubuntu-latest
+frontend:
+  name: Frontend Build
+  runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
+  steps:
+    - uses: actions/checkout@v3
 
-      - uses: actions/setup-node@v3
-        with:
-          node-version: "18"
-          cache: "npm"
-          with:
-              node-version: "18"
-            cache: "npm"
+    - uses: actions/setup-node@v3
+      with:
+        node-version: "18"
+        cache: "npm"
 
-      - name: Install deps
-        working-directory: frontend
-        run: npm install
+    - name: Install deps
+      working-directory: frontend
+      run: npm install
 
-      - name: Build
-        working-directory: frontend
-        run: npm run build || true
+    - name: Build
+      working-directory: frontend
+      run: npm run build || true
+    
+    - name: Install deps
+      working-directory: frontend
+      run: npm install
+
+    - name: Build
+      working-directory: frontend
+      run: npm run build || true
 
   docker:
     name: Docker Build Validation
