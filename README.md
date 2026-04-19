@@ -14,6 +14,7 @@ This repository presents a complete hands-on exploration of Mobile and Cloud Com
 The project demonstrates how modern cloud-native applications are built using containers, orchestration, and distributed system principles.
 
 ---
+
 ## System Architecture
 
 The following diagram illustrates the overall architecture of the project, connecting mobile clients, cloud services, and distributed systems:
@@ -22,11 +23,19 @@ The following diagram illustrates the overall architecture of the project, conne
 
 This architecture represents a simplified cloud-native system combining client interaction, backend services, and distributed components.
 
+The frontend acts as a client interface, while the Flask API handles request processing.
+
+Containerization ensures portability, and Kubernetes manages deployment and scaling.
+
+Redis is used to simulate distributed system behavior.
+
 This represents a complete mobile-cloud workflow:
 - Mobile client sends requests  
 - Flask API processes data  
 - Kubernetes manages deployment  
 - Redis (optional) simulates distributed storage
+
+End-to-end flow: Frontend → Flask API → Container → Kubernetes → Redis
 
 ---
 
@@ -37,6 +46,12 @@ This represents a complete mobile-cloud workflow:
 - **Lab 2:** Distributed Systems (Redis & Consistency Simulation)
 - **Lab 3:** Containerization and Kubernetes Orchestration
 
+## API Endpoints
+
+- GET `/` → Returns response time with simulated delay  
+- GET `/data?size=100` → Returns generated dataset  
+- GET `/health` → Returns service status
+  
 ---
 
 ## Quick Start
