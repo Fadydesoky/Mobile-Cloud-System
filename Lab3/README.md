@@ -135,6 +135,8 @@ The request returns JSON data, which can be consumed directly by mobile applicat
 
 This demonstrates a typical client-server interaction in mobile-cloud architectures.
 
+The API is exposed on port 5000 and can be accessed locally or integrated with client applications.
+
 ---
 
 ## Critical Thinking
