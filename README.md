@@ -64,6 +64,7 @@ End-to-end flow: Frontend → Flask API → Container → Kubernetes → Redis
 - **Lab 1:** Virtualization and Cloud Basics (Latency & AWS)
 - **Lab 2:** Distributed systems using Redis + Docker Compose
 - **Lab 3:** Containerization + Kubernetes orchestration (HPA, probes, services)
+- **Lab 4:** Microservices architecture with Docker Compose (service-to-service communication & resilience)
 
 ## API Endpoints
 
@@ -102,6 +103,32 @@ Sample response from the backend:
 }
 ```
 
+---
+
+## Lab 4 — Microservices Architecture
+
+Lab 4 extends the system by introducing a real microservices architecture using Docker Compose.
+
+The system is split into two independent services:
+
+- **Product Service** → provides product data  
+- **Order Service** → processes orders and communicates with Product Service  
+
+This demonstrates:
+
+- Service-to-service communication  
+- Environment-based configuration  
+- Fault tolerance and retry mechanisms  
+- Real-world microservices behavior  
+
+### Architecture
+
+Client → Order Service → Product Service
+
+Both services run in isolated containers and communicate over the Docker internal network.
+
+---
+
 ## Screenshots
 
 ### Docker Build
@@ -124,6 +151,29 @@ Sample response from the backend:
 
 ### Frontend Dashboard
 ![Frontend](frontend/screenshots/frontend.png)
+
+### Lab 4 — Microservices (Docker Compose)
+
+#### Containers Running
+![Containers](Lab4/screenshots/containers_running.png)
+
+#### Product Service Health
+![Product Health](Lab4/screenshots/product_health.png)
+
+#### Product Data
+![Product Data](Lab4/screenshots/product_data.png)
+
+#### Order Creation (Success)
+![Order Success](Lab4/screenshots/order_success.png)
+
+#### Failure Simulation (Service Down)
+![Failure](Lab4/screenshots/failure_simulation.png)
+
+#### Recovery Scenario
+![Recovery](Lab4/screenshots/recovery.png)
+
+#### Service Logs (Communication)
+![Logs](Lab4/screenshots/logs.png)
 
 ---
 
@@ -161,6 +211,8 @@ This ensures the system is consistently buildable, deployable, and aligned with 
 - Distributed Consistency (CAP Theorem)  
 - Container Orchestration (Kubernetes)  
 - Mobile-Cloud Integration via APIs  
+- Microservices Architecture & Service Communication  
+- Fault Tolerance & Resilience in Distributed Systems    
 
 ---
 
@@ -170,7 +222,8 @@ This ensures the system is consistently buildable, deployable, and aligned with 
 - Demonstrated distributed system behavior using Redis  
 - Built containerized applications with Docker  
 - Modeled Kubernetes deployment and orchestration  
-- Simulated mobile-to-cloud communication using HTTP APIs  
+- Simulated mobile-to-cloud communication using HTTP APIs
+- Designed a microservices architecture with real service-to-service communication and failure handling    
 
 ---
 
