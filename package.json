@@ -1,0 +1,27 @@
+{
+  "name": "mobile-cloud-system",
+  "version": "1.0.0",
+  "description": "Mobile Cloud System - A comprehensive project demonstrating cloud computing concepts with Python backends and React frontend",
+  "private": true,
+  "scripts": {
+    "dev": "cd frontend && npm run start",
+    "build": "cd frontend && npm run build",
+    "test": "cd frontend && npm test",
+    "install:frontend": "cd frontend && npm install",
+    "start": "cd frontend && npm run start"
+  },
+  "keywords": [
+    "cloud",
+    "mobile",
+    "python",
+    "react",
+    "docker",
+    "kubernetes"
+  ],
+  "author": "Fadydesoky",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fadydesoky/Mobile-Cloud-System.git"
+  }
+}
