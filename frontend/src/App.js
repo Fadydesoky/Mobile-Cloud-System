@@ -1001,7 +1001,8 @@ function App() {
   });
   const [metrics, setMetrics] = useState({
     totalRequests: 0,
-    successRate: 100,
+    successfulRequests: 0,
+    successRate: 0,
     avgLatency: 0,
     uptime: 99.9,
   });
@@ -1163,12 +1164,17 @@ function App() {
       setSimulationProgress(100);
 
       // Update metrics
-      setMetrics((prev) => ({
-        totalRequests: prev.totalRequests + 1,
-        successRate: Math.round(((prev.totalRequests * prev.successRate / 100 + 1) / (prev.totalRequests + 1)) * 100),
-        avgLatency: Math.round((prev.avgLatency * prev.totalRequests + latency) / (prev.totalRequests + 1)),
-        uptime: 99.9,
-      }));
+      setMetrics((prev) => {
+        const newTotal = prev.totalRequests + 1;
+        const newSuccessful = prev.successfulRequests + 1;
+        return {
+          totalRequests: newTotal,
+          successfulRequests: newSuccessful,
+          successRate: Math.round((newSuccessful / newTotal) * 100),
+          avgLatency: Math.round((prev.avgLatency * prev.totalRequests + latency) / newTotal),
+          uptime: 99.9,
+        };
+      });
 
       setRequestHistory((prev) => [
         { time: new Date().toLocaleTimeString(), latency, status: "success" },
@@ -1227,12 +1233,17 @@ function App() {
       setSimulationProgress(100);
 
       // Update metrics
-      setMetrics((prev) => ({
-        totalRequests: prev.totalRequests + 1,
-        successRate: Math.round(((prev.totalRequests * prev.successRate / 100 + 1) / (prev.totalRequests + 1)) * 100),
-        avgLatency: Math.round((prev.avgLatency * prev.totalRequests + latency) / (prev.totalRequests + 1)),
-        uptime: 99.9,
-      }));
+      setMetrics((prev) => {
+        const newTotal = prev.totalRequests + 1;
+        const newSuccessful = prev.successfulRequests + 1;
+        return {
+          totalRequests: newTotal,
+          successfulRequests: newSuccessful,
+          successRate: Math.round((newSuccessful / newTotal) * 100),
+          avgLatency: Math.round((prev.avgLatency * prev.totalRequests + latency) / newTotal),
+          uptime: 99.9,
+        };
+      });
 
       // Update history
       setRequestHistory((prev) => [
@@ -1256,11 +1267,15 @@ function App() {
       const latency = Math.round(performance.now() - startTime);
       setSimulationProgress(100);
 
-      setMetrics((prev) => ({
-        ...prev,
-        totalRequests: prev.totalRequests + 1,
-        successRate: Math.round(((prev.totalRequests * prev.successRate / 100) / (prev.totalRequests + 1)) * 100),
-      }));
+      setMetrics((prev) => {
+        const newTotal = prev.totalRequests + 1;
+        // Don't increment successfulRequests for errors
+        return {
+          ...prev,
+          totalRequests: newTotal,
+          successRate: newTotal > 0 ? Math.round((prev.successfulRequests / newTotal) * 100) : 0,
+        };
+      });
 
       setRequestHistory((prev) => [
         { time: new Date().toLocaleTimeString(), latency, status: "error" },
