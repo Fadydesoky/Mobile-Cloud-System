@@ -865,7 +865,7 @@ function App() {
           />
         </div>
 
-        {/* Architecture Diagram */}
+        {/* Architecture Diagram - Enhanced Multi-Layer View */}
         <div style={{ 
           padding: 32, 
           borderRadius: "var(--radius-xl)", 
@@ -877,65 +877,356 @@ function App() {
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--foreground)" }}>
               System Architecture
             </h2>
-            <span style={{ 
-              fontSize: 11, 
-              color: "var(--foreground-muted)", 
-              textTransform: "uppercase", 
-              letterSpacing: "0.1em",
-              fontWeight: 500,
-            }}>
-              Live Data Flow
-            </span>
-          </div>
-          
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            gap: 4, 
-            flexWrap: "wrap", 
-            padding: "24px 0",
-          }}>
-            <ArchNode label="React" sublabel="Frontend" color="#61dafb" isActive={loading} delay={0} />
-            <ConnectionLine animated={loading} />
-            <ArchNode label="Flask" sublabel="Order API" color="var(--success)" isActive={loading} delay={100} />
-            <ConnectionLine animated={loading} />
-            <ArchNode label="Flask" sublabel="Product API" color="#a855f7" isActive={loading} delay={200} />
-            <ConnectionLine animated={loading} />
-            <ArchNode label="Docker" sublabel="Container" color="#2496ed" isActive={loading} delay={300} />
-            <ConnectionLine animated={loading} />
-            <ArchNode label="K8s" sublabel="Orchestration" color="#326ce5" isActive={loading} delay={400} />
-            <ConnectionLine animated={loading} />
-            <ArchNode label="Redis" sublabel="Cache" color="#dc382d" isActive={loading} delay={500} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ 
+                fontSize: 11, 
+                color: loading ? "var(--success)" : "var(--foreground-muted)", 
+                textTransform: "uppercase", 
+                letterSpacing: "0.1em",
+                fontWeight: 500,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}>
+                {loading && <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--success)", animation: "pulse 1s infinite" }} />}
+                {loading ? "Processing" : "Live Data Flow"}
+              </span>
+            </div>
           </div>
 
+          {/* Layer Labels */}
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(5, 1fr)", 
+            gap: 16, 
+            marginBottom: 12,
+            padding: "0 8px",
+          }}>
+            {["Presentation", "API Gateway", "Microservices", "Data Layer", "Infrastructure"].map((layer, i) => (
+              <div key={layer} style={{ textAlign: "center" }}>
+                <span style={{ 
+                  fontSize: 10, 
+                  color: "var(--foreground-muted)", 
+                  textTransform: "uppercase", 
+                  letterSpacing: "0.08em",
+                  fontWeight: 600,
+                }}>
+                  {layer}
+                </span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Main Architecture Flow */}
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(5, 1fr)", 
+            gap: 8, 
+            padding: "24px 8px",
+            position: "relative",
+          }}>
+            {/* Presentation Layer */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <div
+                className="animate-fade-in"
+                style={{
+                  width: "100%",
+                  maxWidth: 120,
+                  padding: "16px 12px",
+                  borderRadius: "var(--radius-lg)",
+                  background: "linear-gradient(135deg, #61dafb20 0%, #61dafb08 100%)",
+                  border: `1px solid ${loading ? "#61dafb" : "#61dafb40"}`,
+                  textAlign: "center",
+                  boxShadow: loading ? "0 0 20px #61dafb30" : "none",
+                  transition: "all 0.3s ease",
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 8 }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#61dafb">
+                    <path d="M12 13.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
+                    <path fillRule="evenodd" d="M12 21c4.97 0 9-1.79 9-4s-4.03-4-9-4-9 1.79-9 4 4.03 4 9 4zm0-2c3.866 0 7-1.343 7-3s-3.134-3-7-3-7 1.343-7 3 3.134 3 7 3z"/>
+                    <path fillRule="evenodd" d="M12 21c-1.657 0-3-4.03-3-9s1.343-9 3-9 3 4.03 3 9-1.343 9-3 9zm0-2c.552 0 1-3.134 1-7s-.448-7-1-7-1 3.134-1 7 .448 7 1 7z"/>
+                  </svg>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#61dafb" }}>React</span>
+                <p style={{ margin: "4px 0 0", fontSize: 10, color: "var(--foreground-muted)" }}>Frontend UI</p>
+              </div>
+              <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
+                Port: 3000
+              </div>
+            </div>
+
+            {/* API Gateway Layer */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, position: "relative" }}>
+              {/* Connection Arrow */}
+              <div style={{ 
+                position: "absolute", 
+                left: -20, 
+                top: "50%", 
+                transform: "translateY(-50%)",
+                display: "flex",
+                alignItems: "center",
+              }}>
+                <svg width="40" height="20" viewBox="0 0 40 20">
+                  <defs>
+                    <linearGradient id="arrowGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#61dafb" />
+                      <stop offset="100%" stopColor="#22c55e" />
+                    </linearGradient>
+                  </defs>
+                  <line x1="0" y1="10" x2="32" y2="10" stroke={loading ? "url(#arrowGrad1)" : "var(--border-hover)"} strokeWidth="2" strokeDasharray={loading ? "4 2" : "none"} style={loading ? { animation: "dataFlow 0.8s linear infinite" } : {}} />
+                  <polygon points="30,6 38,10 30,14" fill={loading ? "#22c55e" : "var(--border-hover)"} />
+                </svg>
+              </div>
+              <div
+                className="animate-fade-in"
+                style={{
+                  width: "100%",
+                  maxWidth: 120,
+                  padding: "16px 12px",
+                  borderRadius: "var(--radius-lg)",
+                  background: "linear-gradient(135deg, #22c55e20 0%, #22c55e08 100%)",
+                  border: `1px solid ${loading ? "#22c55e" : "#22c55e40"}`,
+                  textAlign: "center",
+                  boxShadow: loading ? "0 0 20px #22c55e30" : "none",
+                  transition: "all 0.3s ease",
+                  animationDelay: "100ms",
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 8, color: "#22c55e" }}>
+                  <Icons.Server />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#22c55e" }}>Flask API</span>
+                <p style={{ margin: "4px 0 0", fontSize: 10, color: "var(--foreground-muted)" }}>REST Gateway</p>
+              </div>
+              <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
+                Port: 5002
+              </div>
+            </div>
+
+            {/* Microservices Layer */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative" }}>
+              {/* Connection Arrow */}
+              <div style={{ 
+                position: "absolute", 
+                left: -20, 
+                top: "50%", 
+                transform: "translateY(-50%)",
+              }}>
+                <svg width="40" height="20" viewBox="0 0 40 20">
+                  <defs>
+                    <linearGradient id="arrowGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#22c55e" />
+                      <stop offset="100%" stopColor="#a855f7" />
+                    </linearGradient>
+                  </defs>
+                  <line x1="0" y1="10" x2="32" y2="10" stroke={loading ? "url(#arrowGrad2)" : "var(--border-hover)"} strokeWidth="2" strokeDasharray={loading ? "4 2" : "none"} style={loading ? { animation: "dataFlow 0.8s linear infinite" } : {}} />
+                  <polygon points="30,6 38,10 30,14" fill={loading ? "#a855f7" : "var(--border-hover)"} />
+                </svg>
+              </div>
+              {/* Order Service */}
+              <div
+                className="animate-fade-in"
+                style={{
+                  width: "100%",
+                  maxWidth: 120,
+                  padding: "12px 10px",
+                  borderRadius: "var(--radius-md)",
+                  background: "linear-gradient(135deg, #a855f720 0%, #a855f708 100%)",
+                  border: `1px solid ${loading ? "#a855f7" : "#a855f740"}`,
+                  textAlign: "center",
+                  boxShadow: loading ? "0 0 15px #a855f725" : "none",
+                  transition: "all 0.3s ease",
+                  animationDelay: "200ms",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#a855f7" }}>Order Service</span>
+                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Saga Orchestrator</p>
+              </div>
+              {/* Product Service */}
+              <div
+                className="animate-fade-in"
+                style={{
+                  width: "100%",
+                  maxWidth: 120,
+                  padding: "12px 10px",
+                  borderRadius: "var(--radius-md)",
+                  background: "linear-gradient(135deg, #f59e0b20 0%, #f59e0b08 100%)",
+                  border: `1px solid ${loading ? "#f59e0b" : "#f59e0b40"}`,
+                  textAlign: "center",
+                  boxShadow: loading ? "0 0 15px #f59e0b25" : "none",
+                  transition: "all 0.3s ease",
+                  animationDelay: "250ms",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#f59e0b" }}>Product Service</span>
+                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Inventory Mgmt</p>
+              </div>
+              <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
+                Port: 5001
+              </div>
+            </div>
+
+            {/* Data Layer */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative" }}>
+              {/* Connection Arrow */}
+              <div style={{ 
+                position: "absolute", 
+                left: -20, 
+                top: "50%", 
+                transform: "translateY(-50%)",
+              }}>
+                <svg width="40" height="20" viewBox="0 0 40 20">
+                  <defs>
+                    <linearGradient id="arrowGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#a855f7" />
+                      <stop offset="100%" stopColor="#dc382d" />
+                    </linearGradient>
+                  </defs>
+                  <line x1="0" y1="10" x2="32" y2="10" stroke={loading ? "url(#arrowGrad3)" : "var(--border-hover)"} strokeWidth="2" strokeDasharray={loading ? "4 2" : "none"} style={loading ? { animation: "dataFlow 0.8s linear infinite" } : {}} />
+                  <polygon points="30,6 38,10 30,14" fill={loading ? "#dc382d" : "var(--border-hover)"} />
+                </svg>
+              </div>
+              {/* Redis Primary */}
+              <div
+                className="animate-fade-in"
+                style={{
+                  width: "100%",
+                  maxWidth: 120,
+                  padding: "12px 10px",
+                  borderRadius: "var(--radius-md)",
+                  background: "linear-gradient(135deg, #dc382d20 0%, #dc382d08 100%)",
+                  border: `1px solid ${loading ? "#dc382d" : "#dc382d40"}`,
+                  textAlign: "center",
+                  boxShadow: loading ? "0 0 15px #dc382d25" : "none",
+                  transition: "all 0.3s ease",
+                  animationDelay: "300ms",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#dc382d" }}>Redis Primary</span>
+                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Message Queue</p>
+              </div>
+              {/* Redis Replica */}
+              <div
+                className="animate-fade-in"
+                style={{
+                  width: "100%",
+                  maxWidth: 120,
+                  padding: "12px 10px",
+                  borderRadius: "var(--radius-md)",
+                  background: "linear-gradient(135deg, #dc382d15 0%, #dc382d05 100%)",
+                  border: "1px solid #dc382d30",
+                  textAlign: "center",
+                  transition: "all 0.3s ease",
+                  animationDelay: "350ms",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#dc382d", opacity: 0.7 }}>Redis Replica</span>
+                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Failover Node</p>
+              </div>
+              <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
+                Port: 6379
+              </div>
+            </div>
+
+            {/* Infrastructure Layer */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, position: "relative" }}>
+              {/* Connection Arrow */}
+              <div style={{ 
+                position: "absolute", 
+                left: -20, 
+                top: "50%", 
+                transform: "translateY(-50%)",
+              }}>
+                <svg width="40" height="20" viewBox="0 0 40 20">
+                  <defs>
+                    <linearGradient id="arrowGrad4" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#dc382d" />
+                      <stop offset="100%" stopColor="#326ce5" />
+                    </linearGradient>
+                  </defs>
+                  <line x1="0" y1="10" x2="32" y2="10" stroke={loading ? "url(#arrowGrad4)" : "var(--border-hover)"} strokeWidth="2" strokeDasharray={loading ? "4 2" : "none"} style={loading ? { animation: "dataFlow 0.8s linear infinite" } : {}} />
+                  <polygon points="30,6 38,10 30,14" fill={loading ? "#326ce5" : "var(--border-hover)"} />
+                </svg>
+              </div>
+              {/* Docker */}
+              <div
+                className="animate-fade-in"
+                style={{
+                  width: "100%",
+                  maxWidth: 120,
+                  padding: "12px 10px",
+                  borderRadius: "var(--radius-md)",
+                  background: "linear-gradient(135deg, #2496ed20 0%, #2496ed08 100%)",
+                  border: `1px solid ${loading ? "#2496ed" : "#2496ed40"}`,
+                  textAlign: "center",
+                  boxShadow: loading ? "0 0 15px #2496ed25" : "none",
+                  transition: "all 0.3s ease",
+                  animationDelay: "400ms",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#2496ed" }}>Docker</span>
+                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Containers</p>
+              </div>
+              {/* Kubernetes */}
+              <div
+                className="animate-fade-in"
+                style={{
+                  width: "100%",
+                  maxWidth: 120,
+                  padding: "12px 10px",
+                  borderRadius: "var(--radius-md)",
+                  background: "linear-gradient(135deg, #326ce520 0%, #326ce508 100%)",
+                  border: `1px solid ${loading ? "#326ce5" : "#326ce540"}`,
+                  textAlign: "center",
+                  boxShadow: loading ? "0 0 15px #326ce525" : "none",
+                  transition: "all 0.3s ease",
+                  animationDelay: "450ms",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#326ce5" }}>Kubernetes</span>
+                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Orchestration</p>
+              </div>
+              <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
+                K8s Cluster
+              </div>
+            </div>
+          </div>
+
+          {/* Architecture Features */}
           <div style={{ 
             display: "flex", 
             justifyContent: "center", 
-            gap: 24, 
-            marginTop: 16,
+            gap: 16, 
+            marginTop: 24,
             flexWrap: "wrap",
+            padding: "16px",
+            backgroundColor: "var(--background-tertiary)",
+            borderRadius: "var(--radius-md)",
           }}>
             {[
-              "Service Mesh",
-              "Load Balancing",
-              "Auto Scaling",
-              "Health Probes",
-              "Circuit Breaker",
-            ].map((feature, i) => (
-              <span 
-                key={feature}
+              { name: "Saga Pattern", desc: "Distributed Transactions" },
+              { name: "Circuit Breaker", desc: "Fault Isolation" },
+              { name: "Health Probes", desc: "Auto Recovery" },
+              { name: "Load Balancing", desc: "Traffic Distribution" },
+              { name: "Auto Scaling", desc: "Dynamic Resources" },
+            ].map((feature) => (
+              <div 
+                key={feature.name}
                 style={{ 
-                  fontSize: 11, 
-                  color: "var(--foreground-muted)",
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 4,
+                  padding: "8px 16px",
                 }}
               >
-                <Icons.Check />
-                {feature}
-              </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icons.Check />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>{feature.name}</span>
+                </div>
+                <span style={{ fontSize: 10, color: "var(--foreground-muted)" }}>{feature.desc}</span>
+              </div>
             ))}
           </div>
         </div>
