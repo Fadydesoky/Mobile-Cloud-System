@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5002";
@@ -129,14 +129,88 @@ const Icons = {
       <line x1="10" y1="14" x2="21" y2="3" />
     </svg>
   ),
+  Pulse: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
+  Clock: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
 };
 
-// Status indicator component
-const StatusDot = ({ status, size = 8 }) => {
+// Animated number counter hook
+const useAnimatedValue = (targetValue, duration = 500) => {
+  const [displayValue, setDisplayValue] = useState(targetValue);
+  const prevValue = useRef(targetValue);
+
+  useEffect(() => {
+    const startValue = prevValue.current;
+    const startTime = performance.now();
+    const diff = targetValue - startValue;
+
+    if (diff === 0) return;
+
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function
+      const easeOutQuad = 1 - (1 - progress) * (1 - progress);
+      
+      const currentValue = startValue + diff * easeOutQuad;
+      setDisplayValue(Math.round(currentValue * 10) / 10);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        prevValue.current = targetValue;
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [targetValue, duration]);
+
+  return displayValue;
+};
+
+// Progress bar component
+const ProgressBar = ({ progress, isActive }) => (
+  <div
+    style={{
+      width: "100%",
+      height: 4,
+      backgroundColor: "var(--background-tertiary)",
+      borderRadius: 2,
+      overflow: "hidden",
+      opacity: isActive ? 1 : 0,
+      transition: "opacity 0.3s ease",
+    }}
+  >
+    <div
+      style={{
+        width: `${progress}%`,
+        height: "100%",
+        background: "linear-gradient(90deg, var(--accent), #2dd4bf)",
+        borderRadius: 2,
+        transition: "width 0.1s ease-out",
+        boxShadow: isActive ? "0 0 10px var(--accent)" : "none",
+      }}
+    />
+  </div>
+);
+
+// Status indicator component with pulse animation
+const StatusDot = ({ status, size = 8, showPulse = false }) => {
   const colors = {
     healthy: "var(--success)",
     up: "var(--success)",
-    running: "var(--success)",
+    running: "var(--warning)",
     unhealthy: "var(--warning)",
     degraded: "var(--warning)",
     offline: "var(--error)",
@@ -144,19 +218,85 @@ const StatusDot = ({ status, size = 8 }) => {
     unknown: "var(--foreground-muted)",
   };
 
+  const isActive = status === "healthy" || status === "up" || status === "running";
+
   return (
     <span
       style={{
+        position: "relative",
         width: size,
         height: size,
-        borderRadius: "50%",
-        backgroundColor: colors[status] || colors.unknown,
-        display: "inline-block",
-        boxShadow: status === "healthy" || status === "up" || status === "running" 
-          ? `0 0 ${size}px ${colors.healthy}` 
-          : "none",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
-    />
+    >
+      {/* Pulse ring */}
+      {showPulse && isActive && (
+        <span
+          style={{
+            position: "absolute",
+            width: size * 2.5,
+            height: size * 2.5,
+            borderRadius: "50%",
+            backgroundColor: colors[status] || colors.unknown,
+            opacity: 0.3,
+            animation: "statusPulse 2s ease-out infinite",
+          }}
+        />
+      )}
+      <span
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          backgroundColor: colors[status] || colors.unknown,
+          display: "inline-block",
+          boxShadow: isActive 
+            ? `0 0 ${size}px ${colors[status]}` 
+            : "none",
+          position: "relative",
+          zIndex: 1,
+        }}
+      />
+    </span>
+  );
+};
+
+// Tooltip component
+const Tooltip = ({ children, content, position = "top" }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  
+  return (
+    <div
+      style={{ position: "relative", display: "inline-flex" }}
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      {children}
+      {isVisible && (
+        <div
+          style={{
+            position: "absolute",
+            [position === "top" ? "bottom" : "top"]: "calc(100% + 8px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            padding: "8px 12px",
+            backgroundColor: "var(--background-elevated)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            fontSize: 12,
+            color: "var(--foreground-secondary)",
+            whiteSpace: "nowrap",
+            zIndex: 1000,
+            boxShadow: "var(--shadow-lg)",
+            animation: "tooltipFadeIn 0.2s ease-out",
+          }}
+        >
+          {content}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -199,115 +339,326 @@ const MiniChart = ({ data, color = "var(--accent)", height = 40 }) => {
   );
 };
 
-// Metric card component
-const MetricCard = ({ title, value, suffix, change, icon: Icon, trend, chart }) => (
-  <div
-    className="animate-fade-in"
-    style={{
-      padding: "20px",
-      borderRadius: "var(--radius-lg)",
-      border: "1px solid var(--border)",
-      backgroundColor: "var(--background-secondary)",
-      transition: "var(--transition-base)",
-      cursor: "default",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.borderColor = "var(--border-hover)";
-      e.currentTarget.style.transform = "translateY(-2px)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.borderColor = "var(--border)";
-      e.currentTarget.style.transform = "translateY(0)";
-    }}
-  >
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-      <span style={{ fontSize: 13, color: "var(--foreground-secondary)", fontWeight: 500 }}>{title}</span>
-      {Icon && <span style={{ color: "var(--foreground-muted)" }}><Icon /></span>}
-    </div>
-    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-      <span style={{ fontSize: 32, fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: "-0.02em" }}>
-        {value}
-      </span>
-      {suffix && <span style={{ fontSize: 14, color: "var(--foreground-secondary)" }}>{suffix}</span>}
-    </div>
-    {change !== undefined && (
-      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ 
-          fontSize: 12, 
-          fontWeight: 500,
-          color: change >= 0 ? "var(--success)" : "var(--error)",
-        }}>
-          {change >= 0 ? "+" : ""}{change}%
-        </span>
-        <span style={{ fontSize: 11, color: "var(--foreground-muted)" }}>vs last hour</span>
-      </div>
-    )}
-    {chart && (
-      <div style={{ marginTop: 12 }}>
-        <MiniChart data={chart} color={trend === "up" ? "var(--success)" : "var(--accent)"} />
-      </div>
-    )}
-  </div>
-);
+// System Summary Panel
+const SystemSummary = ({ metrics, activeServices, isLoading }) => {
+  const animatedRequests = useAnimatedValue(metrics.totalRequests);
+  const animatedSuccessRate = useAnimatedValue(metrics.successRate);
+  const animatedLatency = useAnimatedValue(metrics.avgLatency);
+  
+  const summaryItems = [
+    { 
+      label: "Total Requests", 
+      value: animatedRequests, 
+      suffix: "", 
+      color: "var(--accent)",
+      icon: Icons.Activity,
+    },
+    { 
+      label: "Success Rate", 
+      value: animatedSuccessRate, 
+      suffix: "%", 
+      color: metrics.successRate >= 95 ? "var(--success)" : metrics.successRate >= 80 ? "var(--warning)" : "var(--error)",
+      icon: Icons.Check,
+    },
+    { 
+      label: "Avg Latency", 
+      value: animatedLatency, 
+      suffix: "ms", 
+      color: metrics.avgLatency <= 100 ? "var(--success)" : metrics.avgLatency <= 200 ? "var(--warning)" : "var(--error)",
+      icon: Icons.Zap,
+    },
+    { 
+      label: "Active Services", 
+      value: activeServices, 
+      suffix: "/3", 
+      color: activeServices >= 2 ? "var(--success)" : "var(--warning)",
+      icon: Icons.Server,
+    },
+  ];
 
-// Service card component
-const ServiceCard = ({ name, status, latency, port, description, icon: Icon }) => (
-  <div
-    className="animate-fade-in"
-    style={{
-      padding: "20px",
-      borderRadius: "var(--radius-lg)",
-      border: "1px solid var(--border)",
-      backgroundColor: "var(--background-secondary)",
-      transition: "var(--transition-base)",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.borderColor = "var(--border-hover)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.borderColor = "var(--border)";
-    }}
-  >
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{
-          width: 40,
-          height: 40,
-          borderRadius: "var(--radius-md)",
-          backgroundColor: "var(--background-tertiary)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--foreground-secondary)",
-        }}>
-          {Icon && <Icon />}
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: 16,
+        padding: 20,
+        borderRadius: "var(--radius-xl)",
+        background: "linear-gradient(135deg, var(--background-secondary) 0%, var(--background-tertiary) 100%)",
+        border: "1px solid var(--border)",
+        marginBottom: 24,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Animated background when loading */}
+      {isLoading && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(90deg, transparent, var(--accent)10, transparent)",
+            animation: "shimmer 2s infinite",
+          }}
+        />
+      )}
+      {summaryItems.map((item, index) => (
+        <div
+          key={item.label}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "8px 0",
+            borderRight: index < summaryItems.length - 1 ? "1px solid var(--border)" : "none",
+            paddingRight: index < summaryItems.length - 1 ? 16 : 0,
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "var(--radius-md)",
+              backgroundColor: `${item.color}15`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: item.color,
+            }}
+          >
+            <item.icon />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {item.label}
+            </div>
+            <div style={{ 
+              fontSize: 24, 
+              fontWeight: 700, 
+              fontFamily: "var(--font-mono)", 
+              color: item.color,
+              display: "flex",
+              alignItems: "baseline",
+              gap: 2,
+            }}>
+              {typeof item.value === "number" ? item.value.toFixed(item.suffix === "%" || item.suffix === "ms" ? 0 : 0) : item.value}
+              <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.7 }}>{item.suffix}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Metric card component with animations
+const MetricCard = ({ title, value, suffix, change, icon: Icon, trend, chart }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const animatedValue = useAnimatedValue(typeof value === "number" ? value : parseFloat(value) || 0);
+  
+  return (
+    <div
+      className="animate-fade-in"
+      style={{
+        padding: "20px",
+        borderRadius: "var(--radius-lg)",
+        border: "1px solid var(--border)",
+        backgroundColor: "var(--background-secondary)",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        cursor: "default",
+        transform: isHovered ? "translateY(-4px)" : "translateY(0)",
+        boxShadow: isHovered ? "var(--shadow-lg)" : "none",
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <span style={{ fontSize: 13, color: "var(--foreground-secondary)", fontWeight: 500 }}>{title}</span>
+        {Icon && (
+          <span 
+            style={{ 
+              color: "var(--foreground-muted)",
+              transform: isHovered ? "scale(1.1)" : "scale(1)",
+              transition: "transform 0.2s ease",
+            }}
+          >
+            <Icon />
+          </span>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <span 
+          style={{ 
+            fontSize: 32, 
+            fontWeight: 700, 
+            fontFamily: "var(--font-mono)", 
+            letterSpacing: "-0.02em",
+            transition: "color 0.3s ease",
+          }}
+        >
+          {typeof value === "number" ? Math.round(animatedValue) : value}
+        </span>
+        {suffix && <span style={{ fontSize: 14, color: "var(--foreground-secondary)" }}>{suffix}</span>}
+      </div>
+      {change !== undefined && (
+        <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ 
+            fontSize: 12, 
+            fontWeight: 500,
+            color: change >= 0 ? "var(--success)" : "var(--error)",
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}>
+            <span style={{ 
+              transform: change >= 0 ? "rotate(-45deg)" : "rotate(45deg)",
+              display: "inline-block",
+            }}>
+              {"\u2192"}
+            </span>
+            {change >= 0 ? "+" : ""}{change}%
+          </span>
+          <span style={{ fontSize: 11, color: "var(--foreground-muted)" }}>vs last hour</span>
+        </div>
+      )}
+      {chart && (
+        <div style={{ marginTop: 12 }}>
+          <MiniChart data={chart} color={trend === "up" ? "var(--success)" : "var(--accent)"} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Service card component with enhanced status indicators
+const ServiceCard = ({ name, status, latency, port, description, icon: Icon }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  
+  const statusLabels = {
+    healthy: "Healthy",
+    up: "Running",
+    running: "Running",
+    unhealthy: "Degraded",
+    degraded: "Degraded",
+    offline: "Down",
+    error: "Error",
+    unknown: "Unknown",
+  };
+
+  const statusColors = {
+    healthy: "var(--success)",
+    up: "var(--success)",
+    running: "var(--success)",
+    unhealthy: "var(--warning)",
+    degraded: "var(--warning)",
+    offline: "var(--error)",
+    error: "var(--error)",
+    unknown: "var(--foreground-muted)",
+  };
+
+  return (
+    <div
+      className="animate-fade-in"
+      style={{
+        padding: "20px",
+        borderRadius: "var(--radius-lg)",
+        border: `1px solid ${isHovered ? statusColors[status] + "50" : "var(--border)"}`,
+        backgroundColor: "var(--background-secondary)",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: isHovered ? "translateY(-2px)" : "translateY(0)",
+        boxShadow: isHovered ? `0 8px 30px ${statusColors[status]}15` : "none",
+        cursor: "pointer",
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setShowDetails(false);
+      }}
+      onClick={() => setShowDetails(!showDetails)}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: "var(--radius-md)",
+            backgroundColor: "var(--background-tertiary)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--foreground-secondary)",
+            transition: "transform 0.2s ease",
+            transform: isHovered ? "scale(1.05)" : "scale(1)",
+          }}>
+            {Icon && <Icon />}
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{name}</h3>
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--foreground-muted)" }}>{description}</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <StatusDot status={status} size={10} showPulse={isHovered} />
+          <span 
+            style={{ 
+              fontSize: 12, 
+              fontWeight: 600, 
+              color: statusColors[status],
+              padding: "2px 8px",
+              borderRadius: "var(--radius-sm)",
+              backgroundColor: `${statusColors[status]}15`,
+            }}
+          >
+            {statusLabels[status] || "Unknown"}
+          </span>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 16 }}>
+        <div>
+          <span style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Latency</span>
+          <p style={{ margin: "4px 0 0", fontSize: 14, fontWeight: 500, fontFamily: "var(--font-mono)" }}>{latency || "N/A"}</p>
         </div>
         <div>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>{name}</h3>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--foreground-muted)" }}>{description}</p>
+          <span style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Port</span>
+          <p style={{ margin: "4px 0 0", fontSize: 14, fontWeight: 500, fontFamily: "var(--font-mono)" }}>{port}</p>
         </div>
       </div>
-      <StatusDot status={status} size={10} />
+      
+      {/* Expandable details panel */}
+      <div
+        style={{
+          maxHeight: showDetails ? 100 : 0,
+          overflow: "hidden",
+          transition: "max-height 0.3s ease, margin-top 0.3s ease, opacity 0.3s ease",
+          marginTop: showDetails ? 16 : 0,
+          opacity: showDetails ? 1 : 0,
+        }}
+      >
+        <div
+          style={{
+            padding: 12,
+            backgroundColor: "var(--background-tertiary)",
+            borderRadius: "var(--radius-md)",
+            fontSize: 12,
+            color: "var(--foreground-secondary)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <Icons.Terminal />
+            <span>Service endpoint: localhost:{port}</span>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--foreground-muted)" }}>
+            Click to collapse details
+          </div>
+        </div>
+      </div>
     </div>
-    <div style={{ display: "flex", gap: 16 }}>
-      <div>
-        <span style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</span>
-        <p style={{ margin: "4px 0 0", fontSize: 14, fontWeight: 500, textTransform: "capitalize", color: status === "healthy" || status === "up" ? "var(--success)" : status === "offline" ? "var(--error)" : "var(--foreground)" }}>{status}</p>
-      </div>
-      <div>
-        <span style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Latency</span>
-        <p style={{ margin: "4px 0 0", fontSize: 14, fontWeight: 500, fontFamily: "var(--font-mono)" }}>{latency || "N/A"}</p>
-      </div>
-      <div>
-        <span style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Port</span>
-        <p style={{ margin: "4px 0 0", fontSize: 14, fontWeight: 500, fontFamily: "var(--font-mono)" }}>{port}</p>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
-// Log entry component
-const LogEntry = ({ timestamp, message, type }) => {
+// Log entry component with animations
+const LogEntry = ({ timestamp, message, type, isNew }) => {
   const colors = {
     info: "var(--foreground-secondary)",
     success: "var(--success)",
@@ -315,21 +666,95 @@ const LogEntry = ({ timestamp, message, type }) => {
     error: "var(--error)",
   };
 
+  const bgColors = {
+    info: "transparent",
+    success: "var(--success-muted)",
+    warning: "var(--warning-muted)",
+    error: "var(--error-muted)",
+  };
+
   return (
     <div
-      className="animate-slide-in"
+      className={isNew ? "animate-slide-in" : ""}
       style={{
         display: "flex",
         gap: 12,
-        padding: "8px 0",
+        padding: "10px 12px",
         borderBottom: "1px solid var(--border)",
         fontSize: 13,
         fontFamily: "var(--font-mono)",
+        backgroundColor: bgColors[type] || "transparent",
+        borderRadius: "var(--radius-sm)",
+        marginBottom: 4,
+        transition: "background-color 0.3s ease",
       }}
     >
-      <span style={{ color: "var(--foreground-muted)", flexShrink: 0 }}>{timestamp}</span>
-      <span style={{ color: colors[type] || colors.info }}>{message}</span>
+      <span style={{ 
+        color: "var(--foreground-muted)", 
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+      }}>
+        <Icons.Clock />
+        {timestamp}
+      </span>
+      <span style={{ 
+        color: colors[type] || colors.info,
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+      }}>
+        {type === "success" && <Icons.Check />}
+        {type === "error" && <Icons.X />}
+        {message}
+      </span>
     </div>
+  );
+};
+
+// Architecture Node component with hover effects
+const ArchitectureNode = ({ 
+  label, 
+  sublabel, 
+  color, 
+  icon, 
+  isActive, 
+  delay = 0,
+  onClick,
+  description,
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+  
+  return (
+    <Tooltip content={description || `${label}: ${sublabel}`}>
+      <div
+        className="animate-fade-in"
+        onClick={onClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{
+          width: "100%",
+          maxWidth: 120,
+          padding: "16px 12px",
+          borderRadius: "var(--radius-lg)",
+          background: `linear-gradient(135deg, ${color}20 0%, ${color}08 100%)`,
+          border: `1px solid ${isActive || isHovered ? color : color + "40"}`,
+          textAlign: "center",
+          boxShadow: isActive || isHovered ? `0 0 25px ${color}40` : "none",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          animationDelay: `${delay}ms`,
+          cursor: "pointer",
+          transform: isHovered ? "scale(1.05)" : "scale(1)",
+        }}
+      >
+        <div style={{ fontSize: 24, marginBottom: 8, color }}>
+          {icon}
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 600, color }}>{label}</span>
+        <p style={{ margin: "4px 0 0", fontSize: 10, color: "var(--foreground-muted)" }}>{sublabel}</p>
+      </div>
+    </Tooltip>
   );
 };
 
@@ -343,6 +768,7 @@ function App() {
   const [services, setServices] = useState({
     order: { status: "unknown", latency: null },
     product: { status: "unknown", latency: null },
+    redis: { status: "unknown", latency: null },
   });
   const [metrics, setMetrics] = useState({
     totalRequests: 0,
@@ -353,6 +779,9 @@ function App() {
   const [requestHistory, setRequestHistory] = useState([]);
   const [latencyHistory, setLatencyHistory] = useState([]);
   const [demoMode, setDemoMode] = useState(false);
+  const [simulationProgress, setSimulationProgress] = useState(0);
+  const [newLogIds, setNewLogIds] = useState(new Set());
+  const logsContainerRef = useRef(null);
   
   // Generate sample chart data
   const chartData = useMemo(() => {
@@ -360,6 +789,16 @@ function App() {
       value: Math.floor(Math.random() * 50) + 20 + (latencyHistory[i]?.latency || 0),
     }));
   }, [latencyHistory]);
+
+  // Count active services
+  const activeServicesCount = useMemo(() => {
+    let count = 0;
+    if (demoMode) return 3;
+    if (services.order.status === "healthy" || services.order.status === "up") count++;
+    if (services.product.status === "healthy" || services.product.status === "up") count++;
+    if (services.redis?.status === "healthy" || services.redis?.status === "up") count++;
+    return count;
+  }, [services, demoMode]);
 
   // Health check
   const checkHealth = useCallback(async () => {
@@ -382,12 +821,16 @@ function App() {
       checkService(PRODUCT_SERVICE_URL),
     ]);
 
-    setServices({ order: orderStatus, product: productStatus });
+    setServices({ 
+      order: orderStatus, 
+      product: productStatus,
+      redis: demoMode ? { status: "healthy", latency: "~2ms" } : { status: "unknown", latency: null },
+    });
     
     // Enable demo mode if both services are offline
     const bothOffline = orderStatus.status === "offline" && productStatus.status === "offline";
     setDemoMode(bothOffline);
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     checkHealth();
@@ -395,38 +838,60 @@ function App() {
     return () => clearInterval(interval);
   }, [checkHealth]);
 
-  // Apply theme
+  // Apply theme with smooth transition
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.transition = "background-color 0.3s ease, color 0.3s ease";
   }, [theme]);
 
-  const addLog = (message, type = "info") => {
+  const addLog = useCallback((message, type = "info") => {
     const timestamp = new Date().toISOString().split("T")[1].split(".")[0];
-    setLogs((prev) => [{ timestamp, message, type, id: Date.now() }, ...prev].slice(0, 100));
-  };
+    const newId = Date.now();
+    setLogs((prev) => [{ timestamp, message, type, id: newId }, ...prev].slice(0, 100));
+    setNewLogIds((prev) => new Set([...prev, newId]));
+    
+    // Remove "new" flag after animation
+    setTimeout(() => {
+      setNewLogIds((prev) => {
+        const next = new Set(prev);
+        next.delete(newId);
+        return next;
+      });
+    }, 500);
+  }, []);
 
   const runSimulation = async () => {
     setLoading(true);
     setStatus("running");
     setOrderData(null);
+    setSimulationProgress(0);
 
     const startTime = performance.now();
     addLog("Initiating service mesh simulation...", "info");
     
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setSimulationProgress((prev) => Math.min(prev + Math.random() * 15, 90));
+    }, 100);
+
     // Demo mode: simulate backend responses
     if (demoMode) {
       addLog("[DEMO] Running in demonstration mode", "info");
-      addLog("POST /orders → Order Service (simulated)", "info");
+      setSimulationProgress(20);
+      addLog("POST /orders -> Order Service (simulated)", "info");
       
       await simulateLatency();
+      setSimulationProgress(40);
       
       const product = DEMO_PRODUCTS[Math.floor(Math.random() * DEMO_PRODUCTS.length)];
       const quantity = Math.floor(Math.random() * 5) + 1;
       const latency = Math.round(performance.now() - startTime);
       
-      addLog(`[DEMO] Order Service → Product Service [${latency}ms]`, "success");
+      setSimulationProgress(60);
+      addLog(`[DEMO] Order Service -> Product Service [${latency}ms]`, "success");
       await simulateLatency();
       
+      setSimulationProgress(80);
       const orderResult = {
         orderId: `ORD-${Date.now().toString(36).toUpperCase()}`,
         product: product.name,
@@ -438,6 +903,7 @@ function App() {
       };
 
       setOrderData(orderResult);
+      setSimulationProgress(100);
 
       // Update metrics
       setMetrics((prev) => ({
@@ -461,13 +927,15 @@ function App() {
       addLog(`[DEMO] Order ${orderResult.orderId} created successfully`, "success");
       addLog(`[DEMO] Total: $${orderResult.totalPrice} | Quantity: ${quantity}`, "info");
       
+      clearInterval(progressInterval);
       setStatus("healthy");
       setLoading(false);
       return;
     }
 
     // Live mode: actual API calls
-    addLog("POST /orders → Order Service", "info");
+    addLog("POST /orders -> Order Service", "info");
+    setSimulationProgress(30);
 
     try {
       const res = await fetch(`${API_BASE_URL}/orders`, {
@@ -480,10 +948,12 @@ function App() {
       });
 
       const latency = Math.round(performance.now() - startTime);
+      setSimulationProgress(70);
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
+      setSimulationProgress(90);
 
       const orderResult = {
         orderId: result.order_id || `ORD-${Date.now().toString(36).toUpperCase()}`,
@@ -496,6 +966,7 @@ function App() {
       };
 
       setOrderData(orderResult);
+      setSimulationProgress(100);
 
       // Update metrics
       setMetrics((prev) => ({
@@ -516,7 +987,7 @@ function App() {
         ...prev,
       ].slice(0, 12));
 
-      addLog(`Order Service → Product Service [${latency}ms]`, "success");
+      addLog(`Order Service -> Product Service [${latency}ms]`, "success");
       addLog(`Product retrieved: ${result.product || "Product"}`, "success");
       addLog(`Order ${orderResult.orderId} created successfully`, "success");
       addLog(`Total: $${result.total_price || 0} | Quantity: ${result.quantity || 0}`, "info");
@@ -524,6 +995,7 @@ function App() {
       setStatus("healthy");
     } catch (err) {
       const latency = Math.round(performance.now() - startTime);
+      setSimulationProgress(100);
 
       setMetrics((prev) => ({
         ...prev,
@@ -537,10 +1009,11 @@ function App() {
       ].slice(0, 20));
 
       addLog(`Error: ${err.message}`, "error");
-      addLog("Circuit breaker triggered — initiating retry logic", "warning");
+      addLog("Circuit breaker triggered - initiating retry logic", "warning");
       setStatus("error");
     }
 
+    clearInterval(progressInterval);
     setLoading(false);
   };
 
@@ -551,7 +1024,34 @@ function App() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--background)", transition: "background-color 0.3s ease" }}>
+      {/* Custom CSS for animations */}
+      <style>{`
+        @keyframes statusPulse {
+          0% { transform: scale(1); opacity: 0.3; }
+          50% { transform: scale(1.5); opacity: 0.15; }
+          100% { transform: scale(2); opacity: 0; }
+        }
+        @keyframes tooltipFadeIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        @keyframes flowingDash {
+          to { stroke-dashoffset: -20; }
+        }
+        .btn-hover:hover {
+          transform: translateY(-1px);
+          box-shadow: var(--shadow-md);
+        }
+        .btn-hover:active {
+          transform: translateY(0);
+        }
+      `}</style>
+
       {/* Demo Mode Banner */}
       {demoMode && (
         <div style={{
@@ -570,6 +1070,7 @@ function App() {
           <span>Demo Mode: Backend services are simulated. Run locally with Docker for live data.</span>
         </div>
       )}
+
       {/* Navigation */}
       <nav style={{ 
         borderBottom: "1px solid var(--border)", 
@@ -578,6 +1079,7 @@ function App() {
         top: 0,
         zIndex: 100,
         backdropFilter: "blur(12px)",
+        transition: "background-color 0.3s ease, border-color 0.3s ease",
       }}>
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px" }}>
           <div style={{ display: "flex", alignItems: "center", height: 56, justifyContent: "space-between" }}>
@@ -595,6 +1097,7 @@ function App() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
+                    className="btn-hover"
                     style={{
                       padding: "6px 14px",
                       borderRadius: "var(--radius-md)",
@@ -604,7 +1107,7 @@ function App() {
                       cursor: "pointer",
                       fontSize: 13,
                       fontWeight: 500,
-                      transition: "var(--transition-fast)",
+                      transition: "all 0.2s ease",
                     }}
                   >
                     {tab.label}
@@ -619,6 +1122,7 @@ function App() {
                 href="https://github.com/Fadydesoky/Mobile-Cloud-System"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="btn-hover"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -631,7 +1135,7 @@ function App() {
                   textDecoration: "none",
                   fontSize: 13,
                   fontWeight: 500,
-                  transition: "var(--transition-fast)",
+                  transition: "all 0.2s ease",
                 }}
               >
                 <Icons.Github />
@@ -639,6 +1143,7 @@ function App() {
               </a>
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="btn-hover"
                 style={{
                   padding: 8,
                   borderRadius: "var(--radius-md)",
@@ -649,6 +1154,7 @@ function App() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  transition: "all 0.2s ease",
                 }}
               >
                 {theme === "dark" ? <Icons.Sun /> : <Icons.Moon />}
@@ -672,14 +1178,18 @@ function App() {
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
+                  transition: "all 0.3s ease",
                 }}
               >
                 <StatusDot status={demoMode && status === "idle" ? "healthy" : status === "idle" ? "unknown" : status} size={6} />
-                {demoMode && status === "idle" ? "Demo" : status === "idle" ? "Ready" : status === "running" ? "Processing" : status === "healthy" ? "Healthy" : "Error"}
+                {demoMode && status === "idle" ? "Demo" : status === "idle" ? "Ready" : status === "running" ? "Processing..." : status === "healthy" ? "Healthy" : "Error"}
               </div>
             </div>
           </div>
         </div>
+        
+        {/* Progress bar under nav */}
+        <ProgressBar progress={simulationProgress} isActive={loading} />
       </nav>
 
       {/* Main Content */}
@@ -697,6 +1207,7 @@ function App() {
           <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={checkHealth}
+              className="btn-hover"
               style={{
                 padding: "10px 16px",
                 borderRadius: "var(--radius-md)",
@@ -709,7 +1220,7 @@ function App() {
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                transition: "var(--transition-fast)",
+                transition: "all 0.2s ease",
               }}
             >
               <Icons.Refresh />
@@ -718,6 +1229,7 @@ function App() {
             <button
               onClick={runSimulation}
               disabled={loading}
+              className="btn-hover"
               style={{
                 padding: "10px 20px",
                 borderRadius: "var(--radius-md)",
@@ -730,25 +1242,39 @@ function App() {
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                transition: "var(--transition-fast)",
+                transition: "all 0.2s ease",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
               {loading ? (
-                <span style={{ 
-                  width: 16, 
-                  height: 16, 
-                  border: "2px solid var(--foreground-muted)", 
-                  borderTopColor: "transparent", 
-                  borderRadius: "50%", 
-                  animation: "spin 1s linear infinite" 
-                }} />
+                <>
+                  <span style={{ 
+                    width: 16, 
+                    height: 16, 
+                    border: "2px solid var(--foreground-muted)", 
+                    borderTopColor: "transparent", 
+                    borderRadius: "50%", 
+                    animation: "spin 1s linear infinite" 
+                  }} />
+                  Simulation Running...
+                </>
               ) : (
-                <Icons.Play />
+                <>
+                  <Icons.Play />
+                  Run Simulation
+                </>
               )}
-              {loading ? "Processing..." : "Run Simulation"}
             </button>
           </div>
         </div>
+
+        {/* System Summary Panel */}
+        <SystemSummary 
+          metrics={metrics} 
+          activeServices={activeServicesCount}
+          isLoading={loading}
+        />
 
         {/* Metrics Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
@@ -799,6 +1325,14 @@ function App() {
             port="5001"
             icon={Icons.Database}
           />
+          <ServiceCard
+            name="Redis Cache"
+            description={demoMode ? "Simulated - Distributed caching" : "In-memory data structure store"}
+            status={demoMode ? "healthy" : services.redis?.status || "unknown"}
+            latency={demoMode ? "~2ms" : services.redis?.latency}
+            port="6379"
+            icon={Icons.Zap}
+          />
         </div>
 
         {/* Architecture Diagram - Enhanced Multi-Layer View */}
@@ -808,6 +1342,7 @@ function App() {
           border: "1px solid var(--border)", 
           backgroundColor: "var(--background-secondary)", 
           marginBottom: 32,
+          transition: "background-color 0.3s ease, border-color 0.3s ease",
         }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
             <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--foreground)" }}>
@@ -823,9 +1358,13 @@ function App() {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
+                padding: "4px 10px",
+                borderRadius: "var(--radius-sm)",
+                backgroundColor: loading ? "var(--success-muted)" : "transparent",
+                transition: "all 0.3s ease",
               }}>
                 {loading && <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--success)", animation: "pulse 1s infinite" }} />}
-                {loading ? "Processing" : "Live Data Flow"}
+                {loading ? "Data Flowing" : "Live Data Flow"}
               </span>
             </div>
           </div>
@@ -838,7 +1377,7 @@ function App() {
             marginBottom: 12,
             padding: "0 8px",
           }}>
-            {["Presentation", "API Gateway", "Microservices", "Data Layer", "Infrastructure"].map((layer, i) => (
+            {["Presentation", "API Gateway", "Microservices", "Data Layer", "Infrastructure"].map((layer) => (
               <div key={layer} style={{ textAlign: "center" }}>
                 <span style={{ 
                   fontSize: 10, 
@@ -863,30 +1402,20 @@ function App() {
           }}>
             {/* Presentation Layer */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-              <div
-                className="animate-fade-in"
-                style={{
-                  width: "100%",
-                  maxWidth: 120,
-                  padding: "16px 12px",
-                  borderRadius: "var(--radius-lg)",
-                  background: "linear-gradient(135deg, #61dafb20 0%, #61dafb08 100%)",
-                  border: `1px solid ${loading ? "#61dafb" : "#61dafb40"}`,
-                  textAlign: "center",
-                  boxShadow: loading ? "0 0 20px #61dafb30" : "none",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                <div style={{ fontSize: 24, marginBottom: 8 }}>
+              <ArchitectureNode
+                label="React"
+                sublabel="Frontend UI"
+                color="#61dafb"
+                isActive={loading}
+                description="React 19 Single Page Application with real-time updates"
+                icon={
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="#61dafb">
                     <path d="M12 13.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
                     <path fillRule="evenodd" d="M12 21c4.97 0 9-1.79 9-4s-4.03-4-9-4-9 1.79-9 4 4.03 4 9 4zm0-2c3.866 0 7-1.343 7-3s-3.134-3-7-3-7 1.343-7 3 3.134 3 7 3z"/>
                     <path fillRule="evenodd" d="M12 21c-1.657 0-3-4.03-3-9s1.343-9 3-9 3 4.03 3 9-1.343 9-3 9zm0-2c.552 0 1-3.134 1-7s-.448-7-1-7-1 3.134-1 7 .448 7 1 7z"/>
                   </svg>
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#61dafb" }}>React</span>
-                <p style={{ margin: "4px 0 0", fontSize: 10, color: "var(--foreground-muted)" }}>Frontend UI</p>
-              </div>
+                }
+              />
               <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
                 Port: 3000
               </div>
@@ -910,31 +1439,25 @@ function App() {
                       <stop offset="100%" stopColor="#22c55e" />
                     </linearGradient>
                   </defs>
-                  <line x1="0" y1="10" x2="32" y2="10" stroke={loading ? "url(#arrowGrad1)" : "var(--border-hover)"} strokeWidth="2" strokeDasharray={loading ? "4 2" : "none"} style={loading ? { animation: "dataFlow 0.8s linear infinite" } : {}} />
+                  <line 
+                    x1="0" y1="10" x2="32" y2="10" 
+                    stroke={loading ? "url(#arrowGrad1)" : "var(--border-hover)"} 
+                    strokeWidth="2" 
+                    strokeDasharray={loading ? "4 2" : "none"} 
+                    style={loading ? { animation: "flowingDash 0.5s linear infinite" } : {}} 
+                  />
                   <polygon points="30,6 38,10 30,14" fill={loading ? "#22c55e" : "var(--border-hover)"} />
                 </svg>
               </div>
-              <div
-                className="animate-fade-in"
-                style={{
-                  width: "100%",
-                  maxWidth: 120,
-                  padding: "16px 12px",
-                  borderRadius: "var(--radius-lg)",
-                  background: "linear-gradient(135deg, #22c55e20 0%, #22c55e08 100%)",
-                  border: `1px solid ${loading ? "#22c55e" : "#22c55e40"}`,
-                  textAlign: "center",
-                  boxShadow: loading ? "0 0 20px #22c55e30" : "none",
-                  transition: "all 0.3s ease",
-                  animationDelay: "100ms",
-                }}
-              >
-                <div style={{ fontSize: 24, marginBottom: 8, color: "#22c55e" }}>
-                  <Icons.Server />
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#22c55e" }}>Flask API</span>
-                <p style={{ margin: "4px 0 0", fontSize: 10, color: "var(--foreground-muted)" }}>REST Gateway</p>
-              </div>
+              <ArchitectureNode
+                label="Flask API"
+                sublabel="REST Gateway"
+                color="#22c55e"
+                isActive={loading}
+                delay={100}
+                description="Python Flask REST API with CORS and health checks"
+                icon={<Icons.Server />}
+              />
               <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
                 Port: 5002
               </div>
@@ -956,48 +1479,60 @@ function App() {
                       <stop offset="100%" stopColor="#a855f7" />
                     </linearGradient>
                   </defs>
-                  <line x1="0" y1="10" x2="32" y2="10" stroke={loading ? "url(#arrowGrad2)" : "var(--border-hover)"} strokeWidth="2" strokeDasharray={loading ? "4 2" : "none"} style={loading ? { animation: "dataFlow 0.8s linear infinite" } : {}} />
+                  <line 
+                    x1="0" y1="10" x2="32" y2="10" 
+                    stroke={loading ? "url(#arrowGrad2)" : "var(--border-hover)"} 
+                    strokeWidth="2" 
+                    strokeDasharray={loading ? "4 2" : "none"} 
+                    style={loading ? { animation: "flowingDash 0.5s linear infinite" } : {}} 
+                  />
                   <polygon points="30,6 38,10 30,14" fill={loading ? "#a855f7" : "var(--border-hover)"} />
                 </svg>
               </div>
               {/* Order Service */}
-              <div
-                className="animate-fade-in"
-                style={{
-                  width: "100%",
-                  maxWidth: 120,
-                  padding: "12px 10px",
-                  borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, #a855f720 0%, #a855f708 100%)",
-                  border: `1px solid ${loading ? "#a855f7" : "#a855f740"}`,
-                  textAlign: "center",
-                  boxShadow: loading ? "0 0 15px #a855f725" : "none",
-                  transition: "all 0.3s ease",
-                  animationDelay: "200ms",
-                }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#a855f7" }}>Order Service</span>
-                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Saga Orchestrator</p>
-              </div>
+              <Tooltip content="Order Service: Handles order creation with saga pattern">
+                <div
+                  className="animate-fade-in"
+                  style={{
+                    width: "100%",
+                    maxWidth: 120,
+                    padding: "12px 10px",
+                    borderRadius: "var(--radius-md)",
+                    background: "linear-gradient(135deg, #a855f720 0%, #a855f708 100%)",
+                    border: `1px solid ${loading ? "#a855f7" : "#a855f740"}`,
+                    textAlign: "center",
+                    boxShadow: loading ? "0 0 20px #a855f730" : "none",
+                    transition: "all 0.3s ease",
+                    animationDelay: "200ms",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#a855f7" }}>Order Service</span>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Saga Orchestrator</p>
+                </div>
+              </Tooltip>
               {/* Product Service */}
-              <div
-                className="animate-fade-in"
-                style={{
-                  width: "100%",
-                  maxWidth: 120,
-                  padding: "12px 10px",
-                  borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, #f59e0b20 0%, #f59e0b08 100%)",
-                  border: `1px solid ${loading ? "#f59e0b" : "#f59e0b40"}`,
-                  textAlign: "center",
-                  boxShadow: loading ? "0 0 15px #f59e0b25" : "none",
-                  transition: "all 0.3s ease",
-                  animationDelay: "250ms",
-                }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#f59e0b" }}>Product Service</span>
-                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Inventory Mgmt</p>
-              </div>
+              <Tooltip content="Product Service: Manages inventory and catalog">
+                <div
+                  className="animate-fade-in"
+                  style={{
+                    width: "100%",
+                    maxWidth: 120,
+                    padding: "12px 10px",
+                    borderRadius: "var(--radius-md)",
+                    background: "linear-gradient(135deg, #f59e0b20 0%, #f59e0b08 100%)",
+                    border: `1px solid ${loading ? "#f59e0b" : "#f59e0b40"}`,
+                    textAlign: "center",
+                    boxShadow: loading ? "0 0 20px #f59e0b30" : "none",
+                    transition: "all 0.3s ease",
+                    animationDelay: "250ms",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#f59e0b" }}>Product Service</span>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Inventory Mgmt</p>
+                </div>
+              </Tooltip>
               <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
                 Port: 5001
               </div>
@@ -1019,47 +1554,59 @@ function App() {
                       <stop offset="100%" stopColor="#dc382d" />
                     </linearGradient>
                   </defs>
-                  <line x1="0" y1="10" x2="32" y2="10" stroke={loading ? "url(#arrowGrad3)" : "var(--border-hover)"} strokeWidth="2" strokeDasharray={loading ? "4 2" : "none"} style={loading ? { animation: "dataFlow 0.8s linear infinite" } : {}} />
+                  <line 
+                    x1="0" y1="10" x2="32" y2="10" 
+                    stroke={loading ? "url(#arrowGrad3)" : "var(--border-hover)"} 
+                    strokeWidth="2" 
+                    strokeDasharray={loading ? "4 2" : "none"} 
+                    style={loading ? { animation: "flowingDash 0.5s linear infinite" } : {}} 
+                  />
                   <polygon points="30,6 38,10 30,14" fill={loading ? "#dc382d" : "var(--border-hover)"} />
                 </svg>
               </div>
               {/* Redis Primary */}
-              <div
-                className="animate-fade-in"
-                style={{
-                  width: "100%",
-                  maxWidth: 120,
-                  padding: "12px 10px",
-                  borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, #dc382d20 0%, #dc382d08 100%)",
-                  border: `1px solid ${loading ? "#dc382d" : "#dc382d40"}`,
-                  textAlign: "center",
-                  boxShadow: loading ? "0 0 15px #dc382d25" : "none",
-                  transition: "all 0.3s ease",
-                  animationDelay: "300ms",
-                }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#dc382d" }}>Redis Primary</span>
-                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Message Queue</p>
-              </div>
+              <Tooltip content="Redis Primary: Message queue and caching layer">
+                <div
+                  className="animate-fade-in"
+                  style={{
+                    width: "100%",
+                    maxWidth: 120,
+                    padding: "12px 10px",
+                    borderRadius: "var(--radius-md)",
+                    background: "linear-gradient(135deg, #dc382d20 0%, #dc382d08 100%)",
+                    border: `1px solid ${loading ? "#dc382d" : "#dc382d40"}`,
+                    textAlign: "center",
+                    boxShadow: loading ? "0 0 20px #dc382d30" : "none",
+                    transition: "all 0.3s ease",
+                    animationDelay: "300ms",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#dc382d" }}>Redis Primary</span>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Message Queue</p>
+                </div>
+              </Tooltip>
               {/* Redis Replica */}
-              <div
-                className="animate-fade-in"
-                style={{
-                  width: "100%",
-                  maxWidth: 120,
-                  padding: "12px 10px",
-                  borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, #dc382d15 0%, #dc382d05 100%)",
-                  border: "1px solid #dc382d30",
-                  textAlign: "center",
-                  transition: "all 0.3s ease",
-                  animationDelay: "350ms",
-                }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#dc382d", opacity: 0.7 }}>Redis Replica</span>
-                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Failover Node</p>
-              </div>
+              <Tooltip content="Redis Replica: Failover and read scaling">
+                <div
+                  className="animate-fade-in"
+                  style={{
+                    width: "100%",
+                    maxWidth: 120,
+                    padding: "12px 10px",
+                    borderRadius: "var(--radius-md)",
+                    background: "linear-gradient(135deg, #dc382d15 0%, #dc382d05 100%)",
+                    border: "1px solid #dc382d30",
+                    textAlign: "center",
+                    transition: "all 0.3s ease",
+                    animationDelay: "350ms",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#dc382d", opacity: 0.7 }}>Redis Replica</span>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Failover Node</p>
+                </div>
+              </Tooltip>
               <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
                 Port: 6379
               </div>
@@ -1081,48 +1628,60 @@ function App() {
                       <stop offset="100%" stopColor="#326ce5" />
                     </linearGradient>
                   </defs>
-                  <line x1="0" y1="10" x2="32" y2="10" stroke={loading ? "url(#arrowGrad4)" : "var(--border-hover)"} strokeWidth="2" strokeDasharray={loading ? "4 2" : "none"} style={loading ? { animation: "dataFlow 0.8s linear infinite" } : {}} />
+                  <line 
+                    x1="0" y1="10" x2="32" y2="10" 
+                    stroke={loading ? "url(#arrowGrad4)" : "var(--border-hover)"} 
+                    strokeWidth="2" 
+                    strokeDasharray={loading ? "4 2" : "none"} 
+                    style={loading ? { animation: "flowingDash 0.5s linear infinite" } : {}} 
+                  />
                   <polygon points="30,6 38,10 30,14" fill={loading ? "#326ce5" : "var(--border-hover)"} />
                 </svg>
               </div>
               {/* Docker */}
-              <div
-                className="animate-fade-in"
-                style={{
-                  width: "100%",
-                  maxWidth: 120,
-                  padding: "12px 10px",
-                  borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, #2496ed20 0%, #2496ed08 100%)",
-                  border: `1px solid ${loading ? "#2496ed" : "#2496ed40"}`,
-                  textAlign: "center",
-                  boxShadow: loading ? "0 0 15px #2496ed25" : "none",
-                  transition: "all 0.3s ease",
-                  animationDelay: "400ms",
-                }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#2496ed" }}>Docker</span>
-                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Containers</p>
-              </div>
+              <Tooltip content="Docker: Container runtime for all services">
+                <div
+                  className="animate-fade-in"
+                  style={{
+                    width: "100%",
+                    maxWidth: 120,
+                    padding: "12px 10px",
+                    borderRadius: "var(--radius-md)",
+                    background: "linear-gradient(135deg, #2496ed20 0%, #2496ed08 100%)",
+                    border: `1px solid ${loading ? "#2496ed" : "#2496ed40"}`,
+                    textAlign: "center",
+                    boxShadow: loading ? "0 0 20px #2496ed30" : "none",
+                    transition: "all 0.3s ease",
+                    animationDelay: "400ms",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#2496ed" }}>Docker</span>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Containers</p>
+                </div>
+              </Tooltip>
               {/* Kubernetes */}
-              <div
-                className="animate-fade-in"
-                style={{
-                  width: "100%",
-                  maxWidth: 120,
-                  padding: "12px 10px",
-                  borderRadius: "var(--radius-md)",
-                  background: "linear-gradient(135deg, #326ce520 0%, #326ce508 100%)",
-                  border: `1px solid ${loading ? "#326ce5" : "#326ce540"}`,
-                  textAlign: "center",
-                  boxShadow: loading ? "0 0 15px #326ce525" : "none",
-                  transition: "all 0.3s ease",
-                  animationDelay: "450ms",
-                }}
-              >
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#326ce5" }}>Kubernetes</span>
-                <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Orchestration</p>
-              </div>
+              <Tooltip content="Kubernetes: Container orchestration with auto-scaling">
+                <div
+                  className="animate-fade-in"
+                  style={{
+                    width: "100%",
+                    maxWidth: 120,
+                    padding: "12px 10px",
+                    borderRadius: "var(--radius-md)",
+                    background: "linear-gradient(135deg, #326ce520 0%, #326ce508 100%)",
+                    border: `1px solid ${loading ? "#326ce5" : "#326ce540"}`,
+                    textAlign: "center",
+                    boxShadow: loading ? "0 0 20px #326ce530" : "none",
+                    transition: "all 0.3s ease",
+                    animationDelay: "450ms",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#326ce5" }}>Kubernetes</span>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "var(--foreground-muted)" }}>Orchestration</p>
+                </div>
+              </Tooltip>
               <div style={{ fontSize: 10, color: "var(--foreground-muted)", textAlign: "center" }}>
                 K8s Cluster
               </div>
@@ -1139,6 +1698,7 @@ function App() {
             padding: "16px",
             backgroundColor: "var(--background-tertiary)",
             borderRadius: "var(--radius-md)",
+            transition: "background-color 0.3s ease",
           }}>
             {[
               { name: "Saga Pattern", desc: "Distributed Transactions" },
@@ -1147,22 +1707,25 @@ function App() {
               { name: "Load Balancing", desc: "Traffic Distribution" },
               { name: "Auto Scaling", desc: "Dynamic Resources" },
             ].map((feature) => (
-              <div 
-                key={feature.name}
-                style={{ 
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "8px 16px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <Icons.Check />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>{feature.name}</span>
+              <Tooltip key={feature.name} content={feature.desc}>
+                <div 
+                  style={{ 
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "8px 16px",
+                    cursor: "pointer",
+                    transition: "transform 0.2s ease",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <Icons.Check />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>{feature.name}</span>
+                  </div>
+                  <span style={{ fontSize: 10, color: "var(--foreground-muted)" }}>{feature.desc}</span>
                 </div>
-                <span style={{ fontSize: 10, color: "var(--foreground-muted)" }}>{feature.desc}</span>
-              </div>
+              </Tooltip>
             ))}
           </div>
         </div>
@@ -1175,6 +1738,7 @@ function App() {
             borderRadius: "var(--radius-lg)", 
             border: "1px solid var(--border)", 
             backgroundColor: "var(--background-secondary)",
+            transition: "background-color 0.3s ease, border-color 0.3s ease",
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>API Response</h3>
@@ -1205,17 +1769,21 @@ function App() {
                 <p style={{ color: "var(--foreground-muted)", margin: 0, fontSize: 13 }}>Processing request...</p>
               </div>
             ) : orderData ? (
-              <pre style={{
-                margin: 0,
-                padding: 16,
-                borderRadius: "var(--radius-md)",
-                backgroundColor: "var(--background-tertiary)",
-                fontSize: 13,
-                fontFamily: "var(--font-mono)",
-                overflow: "auto",
-                lineHeight: 1.6,
-                color: "var(--foreground-secondary)",
-              }}>
+              <pre 
+                className="animate-fade-in"
+                style={{
+                  margin: 0,
+                  padding: 16,
+                  borderRadius: "var(--radius-md)",
+                  backgroundColor: "var(--background-tertiary)",
+                  fontSize: 13,
+                  fontFamily: "var(--font-mono)",
+                  overflow: "auto",
+                  lineHeight: 1.6,
+                  color: "var(--foreground-secondary)",
+                  transition: "background-color 0.3s ease",
+                }}
+              >
                 {JSON.stringify(orderData, null, 2)}
               </pre>
             ) : (
@@ -1246,30 +1814,53 @@ function App() {
             borderRadius: "var(--radius-lg)", 
             border: "1px solid var(--border)", 
             backgroundColor: "var(--background-secondary)",
+            transition: "background-color 0.3s ease, border-color 0.3s ease",
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>System Logs</h3>
               {logs.length > 0 && (
-                <span style={{ fontSize: 11, color: "var(--foreground-muted)" }}>
+                <span style={{ 
+                  fontSize: 11, 
+                  color: "var(--foreground-muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}>
+                  <span style={{ 
+                    width: 6, 
+                    height: 6, 
+                    borderRadius: "50%", 
+                    backgroundColor: loading ? "var(--success)" : "var(--foreground-muted)",
+                    animation: loading ? "pulse 1s infinite" : "none",
+                  }} />
                   {logs.length} entries
                 </span>
               )}
             </div>
-            <div style={{
-              maxHeight: 280,
-              overflow: "auto",
-              backgroundColor: "var(--background-tertiary)",
-              borderRadius: "var(--radius-md)",
-              padding: logs.length ? 16 : 0,
-            }}>
+            <div 
+              ref={logsContainerRef}
+              className="log-container"
+              style={{
+                maxHeight: 280,
+                overflow: "auto",
+                backgroundColor: "var(--background-tertiary)",
+                borderRadius: "var(--radius-md)",
+                padding: logs.length ? 12 : 0,
+                transition: "background-color 0.3s ease",
+              }}
+            >
               {logs.length > 0 ? (
                 logs.slice(0, 15).map((log) => (
-                  <LogEntry key={log.id} {...log} />
+                  <LogEntry 
+                    key={log.id} 
+                    {...log} 
+                    isNew={newLogIds.has(log.id)}
+                  />
                 ))
               ) : (
                 <div style={{ padding: 48, textAlign: "center" }}>
                   <p style={{ color: "var(--foreground-muted)", margin: 0, fontSize: 13 }}>
-                    No logs yet — run a simulation
+                    No logs yet - run a simulation
                   </p>
                 </div>
               )}
@@ -1285,6 +1876,7 @@ function App() {
             borderRadius: "var(--radius-lg)", 
             border: "1px solid var(--border)", 
             backgroundColor: "var(--background-secondary)",
+            transition: "background-color 0.3s ease, border-color 0.3s ease",
           }}>
             <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600 }}>Request History</h3>
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
@@ -1300,6 +1892,16 @@ function App() {
                     minWidth: 90,
                     textAlign: "center",
                     animationDelay: `${i * 50}ms`,
+                    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
                   <div style={{ 
@@ -1327,6 +1929,7 @@ function App() {
           borderRadius: "var(--radius-xl)", 
           border: "1px solid var(--border)", 
           backgroundColor: "var(--background-secondary)",
+          transition: "background-color 0.3s ease, border-color 0.3s ease",
         }}>
           <h2 style={{ margin: "0 0 24px", fontSize: 16, fontWeight: 600, textAlign: "center" }}>
             Technology Stack
@@ -1342,7 +1945,7 @@ function App() {
               { name: "Flask", desc: "Python API", color: "#22c55e" },
               { name: "React", desc: "Frontend UI", color: "#61dafb" },
               { name: "Redis", desc: "Distributed Cache", color: "#dc382d" },
-              { name: "GitHub Actions", desc: "CI/CD Pipeline", color: "#ffffff" },
+              { name: "GitHub Actions", desc: "CI/CD Pipeline", color: "#a855f7" },
             ].map((tech) => (
               <div
                 key={tech.name}
@@ -1354,7 +1957,18 @@ function App() {
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  transition: "var(--transition-fast)",
+                  transition: "all 0.2s ease",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = tech.color;
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = `0 4px 20px ${tech.color}20`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
                 }}
               >
                 <div style={{
@@ -1362,6 +1976,7 @@ function App() {
                   height: 10,
                   borderRadius: "50%",
                   backgroundColor: tech.color,
+                  boxShadow: `0 0 10px ${tech.color}50`,
                 }} />
                 <div>
                   <span style={{ fontSize: 14, fontWeight: 600 }}>{tech.name}</span>
@@ -1385,6 +2000,7 @@ function App() {
               href="https://github.com/Fadydesoky/Mobile-Cloud-System"
               target="_blank"
               rel="noopener noreferrer"
+              className="btn-hover"
               style={{
                 color: "var(--foreground-secondary)",
                 fontSize: 13,
@@ -1392,7 +2008,9 @@ function App() {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                transition: "var(--transition-fast)",
+                transition: "all 0.2s ease",
+                padding: "6px 12px",
+                borderRadius: "var(--radius-md)",
               }}
             >
               View on GitHub <Icons.External />
@@ -1401,6 +2019,7 @@ function App() {
               href="https://www.linkedin.com/in/fadydesokysaeedabdelaziz/"
               target="_blank"
               rel="noopener noreferrer"
+              className="btn-hover"
               style={{
                 color: "var(--foreground-secondary)",
                 fontSize: 13,
@@ -1408,7 +2027,9 @@ function App() {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                transition: "var(--transition-fast)",
+                transition: "all 0.2s ease",
+                padding: "6px 12px",
+                borderRadius: "var(--radius-md)",
               }}
             >
               LinkedIn <Icons.External />
