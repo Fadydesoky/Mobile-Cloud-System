@@ -300,6 +300,161 @@ const Tooltip = ({ children, content, position = "top" }) => {
   );
 };
 
+// Skeleton loader component with shimmer effect
+const Skeleton = ({ width = "100%", height = 20, borderRadius = "var(--radius-md)" }) => (
+  <div
+    style={{
+      width,
+      height,
+      borderRadius,
+      backgroundColor: "var(--background-tertiary)",
+      position: "relative",
+      overflow: "hidden",
+    }}
+  >
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "linear-gradient(90deg, transparent, var(--foreground-muted)10, transparent)",
+        animation: "shimmer 1.5s infinite",
+      }}
+    />
+  </div>
+);
+
+// Skeleton card for metrics
+const SkeletonCard = () => (
+  <div
+    style={{
+      padding: 20,
+      borderRadius: "var(--radius-lg)",
+      border: "1px solid var(--border)",
+      backgroundColor: "var(--background-secondary)",
+    }}
+  >
+    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+      <Skeleton width={80} height={14} />
+      <Skeleton width={20} height={20} borderRadius="50%" />
+    </div>
+    <Skeleton width={100} height={32} />
+    <div style={{ marginTop: 8 }}>
+      <Skeleton width={60} height={12} />
+    </div>
+  </div>
+);
+
+// Skeleton card for services
+const SkeletonServiceCard = () => (
+  <div
+    style={{
+      padding: 20,
+      borderRadius: "var(--radius-lg)",
+      border: "1px solid var(--border)",
+      backgroundColor: "var(--background-secondary)",
+    }}
+  >
+    <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+      <Skeleton width={40} height={40} borderRadius="var(--radius-md)" />
+      <div style={{ flex: 1 }}>
+        <Skeleton width={120} height={16} />
+        <div style={{ marginTop: 6 }}>
+          <Skeleton width={180} height={12} />
+        </div>
+      </div>
+      <Skeleton width={70} height={24} borderRadius="var(--radius-sm)" />
+    </div>
+    <div style={{ display: "flex", gap: 16 }}>
+      <Skeleton width={60} height={30} />
+      <Skeleton width={60} height={30} />
+    </div>
+  </div>
+);
+
+// Toast notification component
+const Toast = ({ message, type = "info", isVisible, onClose }) => {
+  const colors = {
+    info: "var(--accent)",
+    success: "var(--success)",
+    error: "var(--error)",
+    warning: "var(--warning)",
+  };
+
+  const icons = {
+    info: Icons.Activity,
+    success: Icons.Check,
+    error: Icons.X,
+    warning: Icons.Zap,
+  };
+
+  const IconComponent = icons[type] || icons.info;
+
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(onClose, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, onClose]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        padding: "14px 20px",
+        borderRadius: "var(--radius-lg)",
+        backgroundColor: "var(--background-elevated)",
+        border: `1px solid ${colors[type]}50`,
+        boxShadow: `0 8px 30px rgba(0, 0, 0, 0.3), 0 0 20px ${colors[type]}20`,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        zIndex: 1000,
+        animation: "toastSlideIn 0.3s ease-out",
+        maxWidth: 400,
+      }}
+    >
+      <div
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: "var(--radius-md)",
+          backgroundColor: `${colors[type]}20`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: colors[type],
+        }}
+      >
+        <IconComponent />
+      </div>
+      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--foreground)" }}>{message}</span>
+      <button
+        onClick={onClose}
+        style={{
+          background: "none",
+          border: "none",
+          color: "var(--foreground-muted)",
+          cursor: "pointer",
+          padding: 4,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginLeft: 8,
+        }}
+      >
+        <Icons.X />
+      </button>
+    </div>
+  );
+};
+
 // Mini chart component for sparklines
 const MiniChart = ({ data, color = "var(--accent)", height = 40 }) => {
   if (!data || data.length === 0) return null;
@@ -855,6 +1010,8 @@ function App() {
   const [demoMode, setDemoMode] = useState(false);
   const [simulationProgress, setSimulationProgress] = useState(0);
   const [newLogIds, setNewLogIds] = useState(new Set());
+  const [toast, setToast] = useState({ isVisible: false, message: "", type: "info" });
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const logsContainerRef = useRef(null);
   
   // Generate sample chart data
@@ -918,6 +1075,31 @@ function App() {
     document.documentElement.style.transition = "background-color 0.3s ease, color 0.3s ease";
   }, [theme]);
 
+  // Auto-scroll logs to latest entry
+  useEffect(() => {
+    if (logsContainerRef.current && logs.length > 0) {
+      logsContainerRef.current.scrollTop = 0;
+    }
+  }, [logs]);
+
+  // Mark initial load complete after first health check or timeout
+  useEffect(() => {
+    // Complete initial load when services are checked or after timeout
+    if (services.order.status !== "unknown" || services.product.status !== "unknown") {
+      setIsInitialLoad(false);
+    }
+    const timer = setTimeout(() => setIsInitialLoad(false), 1500);
+    return () => clearTimeout(timer);
+  }, [services.order.status, services.product.status]);
+
+  const showToast = useCallback((message, type = "info") => {
+    setToast({ isVisible: true, message, type });
+  }, []);
+
+  const hideToast = useCallback(() => {
+    setToast((prev) => ({ ...prev, isVisible: false }));
+  }, []);
+
   const addLog = useCallback((message, type = "info") => {
     const timestamp = new Date().toISOString().split("T")[1].split(".")[0];
     const newId = Date.now();
@@ -939,6 +1121,7 @@ function App() {
     setStatus("running");
     setOrderData(null);
     setSimulationProgress(0);
+    showToast("Simulation started", "info");
 
     const startTime = performance.now();
     addLog("Initiating service mesh simulation...", "info");
@@ -1004,6 +1187,7 @@ function App() {
       clearInterval(progressInterval);
       setStatus("healthy");
       setLoading(false);
+      showToast("Simulation completed successfully", "success");
       return;
     }
 
@@ -1067,6 +1251,7 @@ function App() {
       addLog(`Total: $${result.total_price || 0} | Quantity: ${result.quantity || 0}`, "info");
       
       setStatus("healthy");
+      showToast("Simulation completed successfully", "success");
     } catch (err) {
       const latency = Math.round(performance.now() - startTime);
       setSimulationProgress(100);
@@ -1085,6 +1270,7 @@ function App() {
       addLog(`Error: ${err.message}`, "error");
       addLog("Circuit breaker triggered - initiating retry logic", "warning");
       setStatus("error");
+      showToast("Simulation failed - check logs for details", "error");
     }
 
     clearInterval(progressInterval);
@@ -1135,6 +1321,17 @@ function App() {
         }
         [data-theme="light"] .glass-card {
           background: rgba(255, 255, 255, 0.7);
+        }
+        @keyframes toastSlideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .tab-content-fade {
+          animation: fadeIn 0.3s ease-out;
         }
       `}</style>
 
@@ -1380,62 +1577,83 @@ function App() {
         />
 
         {/* Metrics Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
-          <MetricCard
-            title="Total Requests"
-            value={metrics.totalRequests}
-            icon={Icons.Activity}
-            change={metrics.totalRequests > 0 ? 12 : undefined}
-            chart={chartData}
-            trend="up"
-          />
-          <MetricCard
-            title="Success Rate"
-            value={metrics.successRate}
-            suffix="%"
-            icon={Icons.Check}
-            change={metrics.successRate === 100 ? 0 : -2}
-          />
-          <MetricCard
-            title="Avg Latency"
-            value={metrics.avgLatency}
-            suffix="ms"
-            icon={Icons.Zap}
-          />
-          <MetricCard
-            title="Uptime"
-            value={metrics.uptime.toFixed(1)}
-            suffix="%"
-            icon={Icons.Cloud}
-          />
+        <div className="tab-content-fade" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+          {isInitialLoad ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              <MetricCard
+                title="Total Requests"
+                value={metrics.totalRequests}
+                icon={Icons.Activity}
+                change={metrics.totalRequests > 0 ? 12 : undefined}
+                chart={chartData}
+                trend="up"
+              />
+              <MetricCard
+                title="Success Rate"
+                value={metrics.successRate}
+                suffix="%"
+                icon={Icons.Check}
+                change={metrics.successRate === 100 ? 0 : -2}
+              />
+              <MetricCard
+                title="Avg Latency"
+                value={metrics.avgLatency}
+                suffix="ms"
+                icon={Icons.Zap}
+              />
+              <MetricCard
+                title="Uptime"
+                value={metrics.uptime.toFixed(1)}
+                suffix="%"
+                icon={Icons.Cloud}
+              />
+            </>
+          )}
         </div>
 
         {/* Services Status */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 32 }}>
-          <ServiceCard
-            name="Order Service"
-            description={demoMode ? "Simulated - Handles order processing" : "Handles order processing and fulfillment"}
-            status={demoMode ? "healthy" : services.order.status}
-            latency={demoMode ? "~85ms" : services.order.latency}
-            port="5002"
-            icon={Icons.Box}
-          />
-          <ServiceCard
-            name="Product Service"
-            description={demoMode ? "Simulated - Manages product catalog" : "Manages product catalog and inventory"}
-            status={demoMode ? "healthy" : services.product.status}
-            latency={demoMode ? "~62ms" : services.product.latency}
-            port="5001"
-            icon={Icons.Database}
-          />
-          <ServiceCard
-            name="Redis Cache"
-            description={demoMode ? "Simulated - Distributed caching" : "In-memory data structure store"}
-            status={demoMode ? "healthy" : services.redis?.status || "unknown"}
-            latency={demoMode ? "~2ms" : services.redis?.latency}
-            port="6379"
-            icon={Icons.Zap}
-          />
+        <div className="tab-content-fade" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 32 }}>
+          {isInitialLoad ? (
+            <>
+              <SkeletonServiceCard />
+              <SkeletonServiceCard />
+              <SkeletonServiceCard />
+            </>
+          ) : (
+            <>
+              <ServiceCard
+                name="Order Service"
+                description={demoMode ? "Simulated - Handles order processing" : "Handles order processing and fulfillment"}
+                status={demoMode ? "healthy" : services.order.status}
+                latency={demoMode ? "~85ms" : services.order.latency}
+                port="5002"
+                icon={Icons.Box}
+              />
+              <ServiceCard
+                name="Product Service"
+                description={demoMode ? "Simulated - Manages product catalog" : "Manages product catalog and inventory"}
+                status={demoMode ? "healthy" : services.product.status}
+                latency={demoMode ? "~62ms" : services.product.latency}
+                port="5001"
+                icon={Icons.Database}
+              />
+              <ServiceCard
+                name="Redis Cache"
+                description={demoMode ? "Simulated - Distributed caching" : "In-memory data structure store"}
+                status={demoMode ? "healthy" : services.redis?.status || "unknown"}
+                latency={demoMode ? "~2ms" : services.redis?.latency}
+                port="6379"
+                icon={Icons.Zap}
+              />
+            </>
+          )}
         </div>
 
         {/* Architecture Diagram - Enhanced Multi-Layer View */}
@@ -1984,42 +2202,47 @@ function App() {
             <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600 }}>Request History</h3>
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
               {requestHistory.slice(0, 12).map((req, i) => (
-                <div
+                <Tooltip 
                   key={i}
-                  className="animate-scale-in"
-                  style={{
-                    padding: "14px 18px",
-                    borderRadius: "var(--radius-md)",
-                    backgroundColor: "var(--background-tertiary)",
-                    border: `1px solid ${req.status === "success" ? "var(--success)" : "var(--error)"}30`,
-                    minWidth: 90,
-                    textAlign: "center",
-                    animationDelay: `${i * 50}ms`,
-                    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = "var(--shadow-md)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
+                  content={`Time: ${req.time} | Latency: ${req.latency}ms | Status: ${req.status}`}
+                  position="top"
                 >
-                  <div style={{ 
-                    fontSize: 18, 
-                    fontWeight: 700, 
-                    fontFamily: "var(--font-mono)",
-                    color: req.status === "success" ? "var(--success)" : "var(--error)",
-                  }}>
-                    {req.latency}
-                    <span style={{ fontSize: 11, fontWeight: 400 }}>ms</span>
+                  <div
+                    className="animate-scale-in"
+                    style={{
+                      padding: "14px 18px",
+                      borderRadius: "var(--radius-md)",
+                      backgroundColor: "var(--background-tertiary)",
+                      border: `1px solid ${req.status === "success" ? "var(--success)" : "var(--error)"}30`,
+                      minWidth: 90,
+                      textAlign: "center",
+                      animationDelay: `${i * 50}ms`,
+                      transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                      cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <div style={{ 
+                      fontSize: 18, 
+                      fontWeight: 700, 
+                      fontFamily: "var(--font-mono)",
+                      color: req.status === "success" ? "var(--success)" : "var(--error)",
+                    }}>
+                      {req.latency}
+                      <span style={{ fontSize: 11, fontWeight: 400 }}>ms</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--foreground-muted)", marginTop: 4 }}>
+                      {req.time}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--foreground-muted)", marginTop: 4 }}>
-                    {req.time}
-                  </div>
-                </div>
+                </Tooltip>
               ))}
             </div>
           </div>
@@ -2140,6 +2363,14 @@ function App() {
           </div>
         </footer>
       </main>
+
+      {/* Toast Notification */}
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.isVisible} 
+        onClose={hideToast} 
+      />
     </div>
   );
 }
