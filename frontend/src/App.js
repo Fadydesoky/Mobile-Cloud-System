@@ -988,7 +988,11 @@ const ArchitectureNode = ({
 };
 
 function App() {
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => {
+    // Load saved theme from localStorage, default to "dark"
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme || "dark";
+  });
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [orderData, setOrderData] = useState(null);
@@ -1013,6 +1017,7 @@ function App() {
   const [newLogIds, setNewLogIds] = useState(new Set());
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "info" });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const logsContainerRef = useRef(null);
   
   // Generate sample chart data
@@ -1033,7 +1038,11 @@ function App() {
   }, [services, demoMode]);
 
   // Health check
-  const checkHealth = useCallback(async () => {
+  const checkHealth = useCallback(async (showFeedback = false) => {
+    if (showFeedback) {
+      setIsRefreshing(true);
+    }
+    
     const checkService = async (url) => {
       const start = performance.now();
       try {
@@ -1062,6 +1071,16 @@ function App() {
     // Enable demo mode if both services are offline
     const bothOffline = orderStatus.status === "offline" && productStatus.status === "offline";
     setDemoMode(bothOffline);
+    
+    if (showFeedback) {
+      setIsRefreshing(false);
+      // Show toast with status
+      if (bothOffline) {
+        setToast({ isVisible: true, message: "Services offline - Demo mode active", type: "info" });
+      } else {
+        setToast({ isVisible: true, message: "Services refreshed successfully", type: "success" });
+      }
+    }
   }, [demoMode]);
 
   useEffect(() => {
@@ -1070,10 +1089,11 @@ function App() {
     return () => clearInterval(interval);
   }, [checkHealth]);
 
-  // Apply theme with smooth transition
+  // Apply theme with smooth transition and save to localStorage
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.style.transition = "background-color 0.3s ease, color 0.3s ease";
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   // Auto-scroll logs to latest entry
@@ -1513,7 +1533,8 @@ function App() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button
-              onClick={checkHealth}
+              onClick={() => checkHealth(true)}
+              disabled={isRefreshing}
               className="btn-hover"
               style={{
                 padding: "12px 20px",
@@ -1521,7 +1542,7 @@ function App() {
                 border: "1px solid var(--border)",
                 background: "var(--background-secondary)",
                 color: "var(--foreground-secondary)",
-                cursor: "pointer",
+                cursor: isRefreshing ? "not-allowed" : "pointer",
                 fontSize: 14,
                 fontWeight: 500,
                 display: "flex",
@@ -1529,10 +1550,16 @@ function App() {
                 gap: 8,
                 transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                opacity: isRefreshing ? 0.7 : 1,
               }}
             >
-              <Icons.Refresh />
-              Refresh
+              <span style={{ 
+                display: "inline-flex",
+                animation: isRefreshing ? "spin 1s linear infinite" : "none",
+              }}>
+                <Icons.Refresh />
+              </span>
+              {isRefreshing ? "Refreshing..." : "Refresh"}
             </button>
             <button
               onClick={runSimulation}
