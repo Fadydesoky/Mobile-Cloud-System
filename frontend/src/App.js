@@ -988,7 +988,11 @@ const ArchitectureNode = ({
 };
 
 function App() {
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState(() => {
+    // Load saved theme from localStorage, default to "dark"
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme || "dark";
+  });
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [orderData, setOrderData] = useState(null);
@@ -1013,6 +1017,7 @@ function App() {
   const [newLogIds, setNewLogIds] = useState(new Set());
   const [toast, setToast] = useState({ isVisible: false, message: "", type: "info" });
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const logsContainerRef = useRef(null);
   
   // Generate sample chart data
@@ -1033,7 +1038,26 @@ function App() {
   }, [services, demoMode]);
 
   // Health check
-  const checkHealth = useCallback(async () => {
+  const checkHealth = useCallback(async (showFeedback = false, resetMetrics = false) => {
+    if (showFeedback) {
+      setIsRefreshing(true);
+    }
+    
+    // Reset all metrics and history when explicitly requested
+    if (resetMetrics) {
+      setMetrics({
+        totalRequests: 0,
+        successfulRequests: 0,
+        successRate: 0,
+        avgLatency: 0,
+        uptime: 99.9,
+      });
+      setRequestHistory([]);
+      setLatencyHistory([]);
+      setLogs([]);
+      setOrderData(null);
+    }
+    
     const checkService = async (url) => {
       const start = performance.now();
       try {
@@ -1062,6 +1086,16 @@ function App() {
     // Enable demo mode if both services are offline
     const bothOffline = orderStatus.status === "offline" && productStatus.status === "offline";
     setDemoMode(bothOffline);
+    
+    if (showFeedback) {
+      setIsRefreshing(false);
+      // Show toast with status
+      if (bothOffline) {
+        setToast({ isVisible: true, message: resetMetrics ? "Dashboard reset - Demo mode active" : "Services offline - Demo mode active", type: "info" });
+      } else {
+        setToast({ isVisible: true, message: resetMetrics ? "Dashboard reset successfully" : "Services refreshed successfully", type: "success" });
+      }
+    }
   }, [demoMode]);
 
   useEffect(() => {
@@ -1070,10 +1104,11 @@ function App() {
     return () => clearInterval(interval);
   }, [checkHealth]);
 
-  // Apply theme with smooth transition
+  // Apply theme with smooth transition and save to localStorage
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.style.transition = "background-color 0.3s ease, color 0.3s ease";
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   // Auto-scroll logs to latest entry
@@ -1132,7 +1167,7 @@ function App() {
       setSimulationProgress((prev) => Math.min(prev + Math.random() * 15, 90));
     }, 100);
 
-    // Demo mode: simulate backend responses
+    // Demo mode: simulate backend responses with realistic success/failure rates
     if (demoMode) {
       addLog("[DEMO] Running in demonstration mode", "info");
       setSimulationProgress(20);
@@ -1141,9 +1176,53 @@ function App() {
       await simulateLatency();
       setSimulationProgress(40);
       
+      const latency = Math.round(performance.now() - startTime);
+      
+      // Simulate realistic failure rate (~15% chance of failure for demo purposes)
+      const simulatedFailure = Math.random() < 0.15;
+      
+      if (simulatedFailure) {
+        // Simulate various error types
+        const errorTypes = [
+          "Connection timeout to Product Service",
+          "Rate limit exceeded (429)",
+          "Service temporarily unavailable (503)",
+          "Database connection pool exhausted",
+        ];
+        const errorMessage = errorTypes[Math.floor(Math.random() * errorTypes.length)];
+        
+        setSimulationProgress(100);
+        
+        // Update metrics for failure
+        setMetrics((prev) => {
+          const newTotal = prev.totalRequests + 1;
+          // Don't increment successfulRequests for failures
+          const newSuccessRate = newTotal > 0 ? Math.round((prev.successfulRequests / newTotal) * 100) : 0;
+          return {
+            ...prev,
+            totalRequests: newTotal,
+            successRate: newSuccessRate,
+          };
+        });
+
+        setRequestHistory((prev) => [
+          { time: new Date().toLocaleTimeString(), latency, status: "error" },
+          ...prev,
+        ].slice(0, 20));
+
+        addLog(`[DEMO] Error: ${errorMessage}`, "error");
+        addLog("[DEMO] Circuit breaker triggered - initiating retry logic", "warning");
+        
+        clearInterval(progressInterval);
+        setStatus("error");
+        setLoading(false);
+        showToast("Simulation failed - simulated error", "error");
+        return;
+      }
+      
+      // Success path
       const product = DEMO_PRODUCTS[Math.floor(Math.random() * DEMO_PRODUCTS.length)];
       const quantity = Math.floor(Math.random() * 5) + 1;
-      const latency = Math.round(performance.now() - startTime);
       
       setSimulationProgress(60);
       addLog(`[DEMO] Order Service -> Product Service [${latency}ms]`, "success");
@@ -1163,14 +1242,15 @@ function App() {
       setOrderData(orderResult);
       setSimulationProgress(100);
 
-      // Update metrics
+      // Update metrics for success
       setMetrics((prev) => {
         const newTotal = prev.totalRequests + 1;
         const newSuccessful = prev.successfulRequests + 1;
+        const newSuccessRate = Math.round((newSuccessful / newTotal) * 100);
         return {
           totalRequests: newTotal,
           successfulRequests: newSuccessful,
-          successRate: Math.round((newSuccessful / newTotal) * 100),
+          successRate: newSuccessRate,
           avgLatency: Math.round((prev.avgLatency * prev.totalRequests + latency) / newTotal),
           uptime: 99.9,
         };
@@ -1513,7 +1593,8 @@ function App() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button
-              onClick={checkHealth}
+              onClick={() => checkHealth(true, true)}
+              disabled={isRefreshing}
               className="btn-hover"
               style={{
                 padding: "12px 20px",
@@ -1521,7 +1602,7 @@ function App() {
                 border: "1px solid var(--border)",
                 background: "var(--background-secondary)",
                 color: "var(--foreground-secondary)",
-                cursor: "pointer",
+                cursor: isRefreshing ? "not-allowed" : "pointer",
                 fontSize: 14,
                 fontWeight: 500,
                 display: "flex",
@@ -1529,10 +1610,16 @@ function App() {
                 gap: 8,
                 transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                opacity: isRefreshing ? 0.7 : 1,
               }}
             >
-              <Icons.Refresh />
-              Refresh
+              <span style={{ 
+                display: "inline-flex",
+                animation: isRefreshing ? "spin 1s linear infinite" : "none",
+              }}>
+                <Icons.Refresh />
+              </span>
+              {isRefreshing ? "Refreshing..." : "Refresh"}
             </button>
             <button
               onClick={runSimulation}
