@@ -191,6 +191,7 @@ jobs:
           context: .
           file: Lab3/Dockerfile.multistage
           push: false
+          load: true
           tags: mobile-cloud-system:lab3
           cache-from: type=gha
           cache-to: type=gha,mode=max
