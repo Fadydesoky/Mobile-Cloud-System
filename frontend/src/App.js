@@ -4,6 +4,20 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5002";
 const PRODUCT_SERVICE_URL = process.env.REACT_APP_PRODUCT_URL || "http://localhost:5001";
 
+// Demo mode products for simulation when backend is unavailable
+const DEMO_PRODUCTS = [
+  { id: 1, name: "Cloud Server Instance", price: 49.99 },
+  { id: 2, name: "Kubernetes Cluster", price: 149.99 },
+  { id: 3, name: "Redis Cache Node", price: 29.99 },
+  { id: 4, name: "Load Balancer", price: 39.99 },
+  { id: 5, name: "Storage Volume (100GB)", price: 19.99 },
+];
+
+// Simulate network latency for demo mode
+const simulateLatency = () => new Promise(resolve => 
+  setTimeout(resolve, Math.floor(Math.random() * 150) + 50)
+);
+
 // Icons as SVG components
 const Icons = {
   Logo: () => (
@@ -402,6 +416,7 @@ function App() {
   });
   const [requestHistory, setRequestHistory] = useState([]);
   const [latencyHistory, setLatencyHistory] = useState([]);
+  const [demoMode, setDemoMode] = useState(false);
   
   // Generate sample chart data
   const chartData = useMemo(() => {
@@ -432,6 +447,10 @@ function App() {
     ]);
 
     setServices({ order: orderStatus, product: productStatus });
+    
+    // Enable demo mode if both services are offline
+    const bothOffline = orderStatus.status === "offline" && productStatus.status === "offline";
+    setDemoMode(bothOffline);
   }, []);
 
   useEffect(() => {
@@ -457,6 +476,61 @@ function App() {
 
     const startTime = performance.now();
     addLog("Initiating service mesh simulation...", "info");
+    
+    // Demo mode: simulate backend responses
+    if (demoMode) {
+      addLog("[DEMO] Running in demonstration mode", "info");
+      addLog("POST /orders → Order Service (simulated)", "info");
+      
+      await simulateLatency();
+      
+      const product = DEMO_PRODUCTS[Math.floor(Math.random() * DEMO_PRODUCTS.length)];
+      const quantity = Math.floor(Math.random() * 5) + 1;
+      const latency = Math.round(performance.now() - startTime);
+      
+      addLog(`[DEMO] Order Service → Product Service [${latency}ms]`, "success");
+      await simulateLatency();
+      
+      const orderResult = {
+        orderId: `ORD-${Date.now().toString(36).toUpperCase()}`,
+        product: product.name,
+        quantity: quantity,
+        totalPrice: (product.price * quantity).toFixed(2),
+        latency: `${latency}ms`,
+        timestamp: new Date().toISOString(),
+        status: "success",
+      };
+
+      setOrderData(orderResult);
+
+      // Update metrics
+      setMetrics((prev) => ({
+        totalRequests: prev.totalRequests + 1,
+        successRate: Math.round(((prev.totalRequests * prev.successRate / 100 + 1) / (prev.totalRequests + 1)) * 100),
+        avgLatency: Math.round((prev.avgLatency * prev.totalRequests + latency) / (prev.totalRequests + 1)),
+        uptime: 99.9,
+      }));
+
+      setRequestHistory((prev) => [
+        { time: new Date().toLocaleTimeString(), latency, status: "success" },
+        ...prev,
+      ].slice(0, 20));
+
+      setLatencyHistory((prev) => [
+        { value: latency },
+        ...prev,
+      ].slice(0, 12));
+
+      addLog(`[DEMO] Product retrieved: ${product.name}`, "success");
+      addLog(`[DEMO] Order ${orderResult.orderId} created successfully`, "success");
+      addLog(`[DEMO] Total: $${orderResult.totalPrice} | Quantity: ${quantity}`, "info");
+      
+      setStatus("healthy");
+      setLoading(false);
+      return;
+    }
+
+    // Live mode: actual API calls
     addLog("POST /orders → Order Service", "info");
 
     try {
@@ -542,6 +616,24 @@ function App() {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }}>
+      {/* Demo Mode Banner */}
+      {demoMode && (
+        <div style={{
+          backgroundColor: "var(--accent)",
+          color: "white",
+          padding: "8px 16px",
+          textAlign: "center",
+          fontSize: 13,
+          fontWeight: 500,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+        }}>
+          <Icons.Zap />
+          <span>Demo Mode: Backend services are simulated. Run locally with Docker for live data.</span>
+        </div>
+      )}
       {/* Navigation */}
       <nav style={{ 
         borderBottom: "1px solid var(--border)", 
@@ -646,8 +738,8 @@ function App() {
                   gap: 6,
                 }}
               >
-                <StatusDot status={status === "idle" ? "unknown" : status} size={6} />
-                {status === "idle" ? "Ready" : status === "running" ? "Processing" : status === "healthy" ? "Healthy" : "Error"}
+                <StatusDot status={demoMode && status === "idle" ? "healthy" : status === "idle" ? "unknown" : status} size={6} />
+                {demoMode && status === "idle" ? "Demo" : status === "idle" ? "Ready" : status === "running" ? "Processing" : status === "healthy" ? "Healthy" : "Error"}
               </div>
             </div>
           </div>
@@ -757,17 +849,17 @@ function App() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginBottom: 32 }}>
           <ServiceCard
             name="Order Service"
-            description="Handles order processing and fulfillment"
-            status={services.order.status}
-            latency={services.order.latency}
+            description={demoMode ? "Simulated - Handles order processing" : "Handles order processing and fulfillment"}
+            status={demoMode ? "healthy" : services.order.status}
+            latency={demoMode ? "~85ms" : services.order.latency}
             port="5002"
             icon={Icons.Box}
           />
           <ServiceCard
             name="Product Service"
-            description="Manages product catalog and inventory"
-            status={services.product.status}
-            latency={services.product.latency}
+            description={demoMode ? "Simulated - Manages product catalog" : "Manages product catalog and inventory"}
+            status={demoMode ? "healthy" : services.product.status}
+            latency={demoMode ? "~62ms" : services.product.latency}
             port="5001"
             icon={Icons.Database}
           />
