@@ -1,253 +1,286 @@
-# Lab 2: Distributed Systems and Consistency
+<p align="center">
+  <img src="https://img.shields.io/badge/Lab-02-green?style=for-the-badge&logo=redis&logoColor=white" alt="Lab 2"/>
+  <img src="https://img.shields.io/badge/Topic-Distributed_Systems-red?style=for-the-badge" alt="Distributed Systems"/>
+  <img src="https://img.shields.io/badge/Database-Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis"/>
+</p>
 
-This lab explores distributed systems concepts including data consistency, replication, and the fundamental trade-offs defined by the CAP theorem, using Redis as the distributed data store.
+<h1 align="center">Distributed Systems & Consistency</h1>
+
+<p align="center">
+  <i>Exploring replication, consensus, and the CAP theorem</i>
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> |
+  <a href="#-architecture">Architecture</a> |
+  <a href="#-cap-theorem">CAP Theorem</a> |
+  <a href="#-experiments">Experiments</a>
+</p>
 
 ---
 
-## Objectives
+## Overview
 
-- Understand distributed system consistency models
-- Implement and observe data replication between nodes
-- Analyze the CAP theorem in practice
-- Explore consensus algorithms and their role in distributed systems
+This lab dives deep into **distributed systems fundamentals** using Redis as our distributed data store. You'll observe replication lag, understand consistency trade-offs, and explore the algorithms that keep distributed systems in sync.
+
+### What You'll Learn
+
+| Concept | Description |
+|---------|-------------|
+| Replication | How data propagates from primary to replica nodes |
+| Consistency Models | Strong vs eventual consistency trade-offs |
+| CAP Theorem | Why distributed systems must choose between C, A, and P |
+| Raft Consensus | How nodes agree on values in distributed systems |
 
 ---
 
-## Architecture Overview
+## Quick Start
+
+```bash
+# Start the distributed system
+docker compose up --build
+
+# Write to primary node
+curl "http://localhost:5000/write?key=test&value=hello"
+
+# Read from primary (immediate consistency)
+curl "http://localhost:5000/read-primary?key=test"
+
+# Read from replica (may show lag)
+curl "http://localhost:5000/read-replica?key=test"
+```
+
+---
+
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           FLASK API LAYER                                │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │
-│  │    /write       │  │  /read-primary  │  │  /read-replica  │          │
-│  │  Write to       │  │  Read from      │  │  Read from      │          │
-│  │  Primary Node   │  │  Primary Node   │  │  Replica Node   │          │
-│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘          │
-└───────────┼────────────────────┼────────────────────┼────────────────────┘
-            │                    │                    │
-            ▼                    ▼                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      DISTRIBUTED DATA LAYER                              │
-│                                                                          │
-│   ┌─────────────────────┐         ┌─────────────────────┐               │
-│   │   REDIS PRIMARY     │         │   REDIS REPLICA     │               │
-│   │   (redis1)          │ ──────► │   (redis2)          │               │
-│   │                     │  Async  │                     │               │
-│   │   - Accepts writes  │  Repli- │   - Read-only       │               │
-│   │   - Source of truth │  cation │   - Eventually      │               │
-│   │                     │         │     consistent      │               │
-│   └─────────────────────┘         └─────────────────────┘               │
-│                                                                          │
-│                    ◄── Replication Lag ──►                              │
-│                    (Eventual Consistency)                                │
-└─────────────────────────────────────────────────────────────────────────┘
++------------------------------------------------------------------------+
+|                           FLASK API LAYER                               |
+|  +------------------+  +------------------+  +------------------+       |
+|  |    /write        |  |  /read-primary   |  |  /read-replica   |      |
+|  |  Write to        |  |  Read from       |  |  Read from       |      |
+|  |  Primary Node    |  |  Primary Node    |  |  Replica Node    |      |
+|  +--------+---------+  +--------+---------+  +--------+---------+      |
++-----------|--------------------|--------------------|-----------------+
+            |                    |                    |
+            v                    v                    v
++------------------------------------------------------------------------+
+|                      DISTRIBUTED DATA LAYER                             |
+|                                                                         |
+|   +------------------------+         +------------------------+        |
+|   |    REDIS PRIMARY       |         |    REDIS REPLICA       |        |
+|   |    (redis1:6379)       | ======> |    (redis2:6380)       |        |
+|   |                        |  Async  |                        |        |
+|   |   * Accepts writes     | Replic- |   * Read-only          |        |
+|   |   * Source of truth    |  ation  |   * Eventually         |        |
+|   |   * Port 6379          |         |     consistent         |        |
+|   +------------------------+         +------------------------+        |
+|                                                                         |
+|                  <---- Replication Lag ---->                           |
+|                    (Eventual Consistency)                               |
++------------------------------------------------------------------------+
 ```
+
+---
+
+## CAP Theorem
+
+The CAP theorem states that a distributed system can only guarantee **two of three properties**:
+
+```
+                         CONSISTENCY (C)
+                        All nodes see the
+                        same data at the
+                           same time
+                              /\
+                             /  \
+                            /    \
+                           /      \
+                          /   ??   \
+                         /  CHOOSE  \
+                        /    TWO     \
+                       /              \
+                      /________________\
+   AVAILABILITY (A)                      PARTITION
+  Every request gets                    TOLERANCE (P)
+     a response                      System works despite
+                                      network failures
+```
+
+### Real-World Trade-offs
+
+| System | Chooses | Sacrifices | Use Case |
+|--------|---------|------------|----------|
+| **Traditional RDBMS** | CA | Partition Tolerance | Single-server databases |
+| **MongoDB, Cassandra** | AP | Strong Consistency | Social media, analytics |
+| **Zookeeper, etcd** | CP | Availability during partitions | Configuration, coordination |
+
+> **Our Lab**: Redis with async replication demonstrates **AP** behavior - prioritizing availability and partition tolerance over immediate consistency.
 
 ---
 
 ## Consistency Models
 
 ### Strong Consistency
-All nodes see the same data at the same time. Every read returns the most recent write.
+
+```
+Write(x=5)              Read(x)
+    |                      |
+    v                      v
++--------+            +--------+
+|   x=5  | =========> |   x=5  |  Always returns latest value
++--------+            +--------+
+Primary               Any Node
+```
+
+- **Guarantee**: Every read returns the most recent write
+- **Trade-off**: Higher latency, reduced availability
+- **Use case**: Financial transactions, inventory systems
 
 ### Eventual Consistency
-Given enough time without new updates, all replicas will converge to the same value. Reads may return stale data temporarily.
 
-### Comparison
+```
+Write(x=5)              Read(x)         Read(x)         Read(x)
+    |                      |               |               |
+    v                      v               v               v
++--------+            +--------+      +--------+      +--------+
+|   x=5  | ---------> |  x=?   | ---> |  x=?   | ---> |   x=5  |
++--------+    Lag     +--------+      +--------+      +--------+
+Primary               Replica         Replica         Replica
+                      (stale)         (stale)         (converged)
+```
 
-| Model | Latency | Availability | Use Case |
-|-------|---------|--------------|----------|
-| Strong | Higher | Lower | Financial transactions |
-| Eventual | Lower | Higher | Social media feeds |
+- **Guarantee**: Given enough time, all replicas converge
+- **Trade-off**: May read stale data temporarily
+- **Use case**: Social media feeds, shopping carts
 
 ---
 
-## The CAP Theorem
+## Experiments
 
-The CAP theorem states that a distributed system can only guarantee two of three properties:
+### Experiment 1: Observing Replication Lag
 
+```bash
+# Step 1: Write a value to primary
+curl "http://localhost:5000/write?key=experiment&value=test123"
+
+# Step 2: Immediately read from replica
+curl "http://localhost:5000/read-replica?key=experiment"
+# Result: May return null (replication hasn't completed)
+
+# Step 3: Wait 100ms and read again
+sleep 0.1 && curl "http://localhost:5000/read-replica?key=experiment"
+# Result: Returns "test123" (data has replicated)
 ```
-                        Consistency (C)
-                             ▲
-                            / \
-                           /   \
-                          /     \
-                         /   ◆   \
-                        /  Choose  \
-                       /    Two     \
-                      /             \
-                     ▼               ▼
-            Availability (A) ◄────► Partition Tolerance (P)
+
+### Experiment 2: Simulating Network Partition
+
+```bash
+# Step 1: Disconnect replica from primary
+docker network disconnect lab2_default redis2
+
+# Step 2: Write to primary (succeeds - AP system)
+curl "http://localhost:5000/write?key=partition&value=during"
+
+# Step 3: Read from replica (returns stale/null)
+curl "http://localhost:5000/read-replica?key=partition"
+
+# Step 4: Reconnect and observe convergence
+docker network connect lab2_default redis2
+sleep 1
+curl "http://localhost:5000/read-replica?key=partition"
+# Result: Eventually returns "during"
 ```
-
-| Property | Definition |
-|----------|------------|
-| **Consistency** | All nodes see the same data at the same time |
-| **Availability** | Every request receives a response |
-| **Partition Tolerance** | System continues to operate despite network failures |
-
-### Real-World Trade-offs
-
-| System | Choice | Sacrifice |
-|--------|--------|-----------|
-| Traditional RDBMS | CA | Partition Tolerance |
-| MongoDB, Cassandra | AP | Strong Consistency |
-| Zookeeper, etcd | CP | Availability during partitions |
 
 ---
 
-## Experiment: Observing Replication Lag
+## Consensus: Raft Algorithm
 
-### Setup
+Distributed systems use consensus algorithms like **Raft** to agree on values:
 
-The experiment uses two Redis nodes:
-- **redis1**: Primary node (accepts writes)
-- **redis2**: Replica node (read-only, receives replicated data)
+```
++----------------------------------------------------------------+
+|                       RAFT CONSENSUS                            |
+|                                                                 |
+|   +------------+        +------------+        +------------+   |
+|   |   LEADER   | -----> |  FOLLOWER  |        |  FOLLOWER  |   |
+|   |   Node 1   |        |   Node 2   | <----- |   Node 3   |   |
+|   +------------+        +------------+        +------------+   |
+|        |                      ^                     ^          |
+|        |                      |                     |          |
+|        +----------------------+---------------------+          |
+|                    Log Replication                              |
+|                                                                 |
+|   STEPS:                                                        |
+|   1. Leader Election - One node becomes leader                  |
+|   2. Log Replication - Leader replicates entries to followers   |
+|   3. Safety - Only committed entries are applied                |
+|   4. Majority Quorum - Requires (n/2)+1 nodes for consensus     |
++----------------------------------------------------------------+
+```
 
-### Steps
+### Why Raft Matters
 
-1. Write a value to the primary node
-2. Immediately read from the replica node
-3. Observe whether the value is present
+| Property | Benefit |
+|----------|---------|
+| Leader-based | Single point for writes simplifies consistency |
+| Majority quorum | Tolerates (n-1)/2 failures |
+| Automatic failover | New leader elected if current fails |
+| Understandable | Designed for clarity (unlike Paxos) |
 
-### Results
+---
 
+## API Reference
+
+| Endpoint | Method | Description | Example |
+|----------|--------|-------------|---------|
+| `/write?key=X&value=Y` | GET | Write to primary | `/write?key=name&value=John` |
+| `/read-primary?key=X` | GET | Read from primary | `/read-primary?key=name` |
+| `/read-replica?key=X` | GET | Read from replica | `/read-replica?key=name` |
+| `/health` | GET | Health check | Returns service status |
+
+---
+
+## Screenshots
+
+### Redis Replication Simulation
 ![Redis Simulation](screenshots/redis-simulation.png)
 
-**Observation**: Data written to the primary node was not immediately available on the replica. This demonstrates **replication lag** - a key characteristic of eventually consistent systems.
+*Demonstrating write to primary and observing replication lag on replica*
 
 ---
 
-## Network Partitions
+## Service Ports
 
-A network partition occurs when nodes cannot communicate with each other due to network failure.
-
-```
-┌─────────────────┐                    ┌─────────────────┐
-│   Node A        │       ╳ ╳ ╳        │   Node B        │
-│   (Primary)     │ ◄──── PARTITION ──►│   (Replica)     │
-│                 │       ╳ ╳ ╳        │                 │
-└─────────────────┘                    └─────────────────┘
-
-During partition:
-- Node A continues accepting writes
-- Node B serves stale data
-- System must choose: reject writes (CP) or accept divergence (AP)
-```
-
-### Handling Strategies
-
-| Strategy | Behavior | Trade-off |
-|----------|----------|-----------|
-| Reject writes | Maintain consistency | Reduced availability |
-| Accept writes | Maintain availability | Potential conflicts |
-| Quorum-based | Balance both | Increased latency |
-
----
-
-## Consensus Algorithms
-
-Distributed systems use consensus algorithms to agree on values across nodes.
-
-### Raft Consensus
-
-Raft is used by systems like etcd and Consul:
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                    RAFT CONSENSUS                         │
-│                                                           │
-│   ┌─────────┐         ┌─────────┐         ┌─────────┐   │
-│   │ LEADER  │ ──────► │FOLLOWER │         │FOLLOWER │   │
-│   │         │         │         │ ◄────── │         │   │
-│   └─────────┘         └─────────┘         └─────────┘   │
-│        │                   ▲                   ▲         │
-│        │                   │                   │         │
-│        └───────────────────┴───────────────────┘         │
-│                    Log Replication                        │
-└──────────────────────────────────────────────────────────┘
-
-1. Leader Election: One node becomes the leader
-2. Log Replication: Leader replicates entries to followers
-3. Safety: Only committed entries are applied
-```
-
-### Key Properties
-
-- **Leader-based**: Single leader handles all writes
-- **Majority quorum**: Requires (n/2)+1 nodes for consensus
-- **Automatic failover**: New leader elected if current fails
-
----
-
-## How to Run
-
-### Prerequisites
-
-- Docker and Docker Compose installed
-
-### Start the Distributed System
-
-```bash
-# Navigate to Lab2
-cd Lab2
-
-# Start Redis nodes and API
-docker compose up --build
-
-# The system exposes:
-# - API: http://localhost:5000
-# - Redis Primary: localhost:6379
-# - Redis Replica: localhost:6380
-```
-
-### Test Replication
-
-```bash
-# Write to primary
-curl "http://localhost:5000/write?key=test&value=hello"
-
-# Read from primary (should return immediately)
-curl "http://localhost:5000/read-primary?key=test"
-
-# Read from replica (may show replication lag)
-curl "http://localhost:5000/read-replica?key=test"
-```
-
----
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/write?key=X&value=Y` | GET | Write key-value to primary |
-| `/read-primary?key=X` | GET | Read from primary node |
-| `/read-replica?key=X` | GET | Read from replica node |
-| `/health` | GET | Health check |
+| Service | Port | Purpose |
+|---------|------|---------|
+| Flask API | 5000 | Application layer |
+| Redis Primary | 6379 | Primary data node |
+| Redis Replica | 6380 | Replica data node |
 
 ---
 
 ## Key Takeaways
 
-1. **Distributed systems require trade-offs** between consistency, availability, and partition tolerance
+1. **Distributed systems require trade-offs** - You cannot have consistency, availability, AND partition tolerance
 2. **Replication lag is unavoidable** in eventually consistent systems
 3. **Consensus algorithms** (like Raft) provide mechanisms for agreement across nodes
-4. **System design choices** depend on application requirements (e.g., financial systems need strong consistency)
-
----
-
-## Performance Considerations
-
-| Factor | Impact | Mitigation |
-|--------|--------|------------|
-| Replication Lag | Stale reads | Read from primary for critical data |
-| Network Latency | Slower consensus | Optimize network topology |
-| Node Failures | Reduced availability | Increase replica count |
+4. **System design choices** depend on application requirements - financial systems need strong consistency, social media can tolerate eventual consistency
 
 ---
 
 ## Further Reading
 
 - [CAP Theorem Explained](https://www.ibm.com/topics/cap-theorem)
-- [Raft Consensus Algorithm](https://raft.github.io/)
+- [Raft Consensus Visualization](https://raft.github.io/)
 - [Redis Replication](https://redis.io/docs/manual/replication/)
+- [Designing Data-Intensive Applications](https://dataintensive.net/)
+
+---
+
+<p align="center">
+  <a href="../Lab1/README.md">Previous: Lab 1 - Virtualization</a> |
+  <a href="../README.md">Back to Main README</a> |
+  <a href="../Lab3/README.md">Next: Lab 3 - Container Orchestration</a>
+</p>

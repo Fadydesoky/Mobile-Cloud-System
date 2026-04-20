@@ -1,175 +1,228 @@
-# Lab 1: Virtualization and Cloud Fundamentals
+<p align="center">
+  <img src="https://img.shields.io/badge/Lab-01-blue?style=for-the-badge&logo=amazonaws&logoColor=white" alt="Lab 1"/>
+  <img src="https://img.shields.io/badge/Topic-Virtualization-orange?style=for-the-badge" alt="Virtualization"/>
+  <img src="https://img.shields.io/badge/Cloud-AWS_EC2-FF9900?style=for-the-badge&logo=amazonec2&logoColor=white" alt="AWS EC2"/>
+</p>
 
-This lab explores the foundational concepts of virtualization, containerization, and cloud infrastructure, with a focus on understanding latency behavior in distributed cloud applications.
+<h1 align="center">Virtualization & Cloud Fundamentals</h1>
+
+<p align="center">
+  <i>Understanding the building blocks of cloud infrastructure</i>
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> |
+  <a href="#-architecture">Architecture</a> |
+  <a href="#-key-concepts">Key Concepts</a> |
+  <a href="#-screenshots">Screenshots</a>
+</p>
 
 ---
 
-## Objectives
+## Overview
 
-- Compare Virtual Machines (VMs) and Containers
-- Analyze latency patterns in cloud-based applications
-- Understand tail latency and its impact on system performance
-- Explore AWS EC2 and the Nitro Hypervisor architecture
+This lab explores the **foundational concepts** of virtualization, containerization, and cloud infrastructure. You'll gain hands-on experience with latency analysis and understand how AWS EC2 powers modern cloud applications.
+
+### What You'll Learn
+
+| Concept | Description |
+|---------|-------------|
+| VMs vs Containers | Compare startup times, memory overhead, and isolation levels |
+| Tail Latency | Understand P99 and P99.9 latency impact on user experience |
+| AWS Nitro | Explore AWS's purpose-built hypervisor architecture |
+| Performance Metrics | Analyze response time distributions in cloud apps |
 
 ---
 
-## Architecture Overview
+## Quick Start
+
+```bash
+# Build and run with Docker
+docker build -t lab1-api .
+docker run -p 5000:5000 lab1-api
+
+# Test the API
+curl http://localhost:5000
+curl http://localhost:5000/data?size=100
+curl http://localhost:5000/health
+```
+
+---
+
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      CLIENT REQUEST                          │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     FLASK API SERVER                         │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │  Endpoint: /                                          │  │
-│  │  - Simulates network latency (random delay)           │  │
-│  │  - Returns response time metrics                      │  │
-│  └───────────────────────────────────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │  Endpoint: /data?size=N                               │  │
-│  │  - Generates dataset of specified size                │  │
-│  │  - Simulates data retrieval latency                   │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    CONTAINER RUNTIME                         │
-│              (Docker / AWS EC2 / Nitro)                      │
-└─────────────────────────────────────────────────────────────┘
+                    +---------------------------+
+                    |      CLIENT REQUEST       |
+                    +-------------+-------------+
+                                  |
+                                  v
++------------------------------------------------------------------+
+|                        FLASK API SERVER                           |
+|                                                                   |
+|   +-----------------------------------------------------------+  |
+|   |  GET /                                                    |  |
+|   |  - Simulates network latency (random delay 0.1-0.5s)      |  |
+|   |  - Returns: {"message": "Mobile Cloud API", "delay": X}   |  |
+|   +-----------------------------------------------------------+  |
+|                                                                   |
+|   +-----------------------------------------------------------+  |
+|   |  GET /data?size=N                                         |  |
+|   |  - Generates dataset of N items                           |  |
+|   |  - Simulates data retrieval with latency                  |  |
+|   +-----------------------------------------------------------+  |
+|                                                                   |
+|   +-----------------------------------------------------------+  |
+|   |  GET /health                                              |  |
+|   |  - Returns: {"status": "healthy"}                         |  |
+|   +-----------------------------------------------------------+  |
++------------------------------------------------------------------+
+                                  |
+                                  v
++------------------------------------------------------------------+
+|                     CONTAINER / VM RUNTIME                        |
+|              (Docker Container or AWS EC2 Instance)               |
++------------------------------------------------------------------+
 ```
 
 ---
 
-## VM vs Container Comparison
+## Key Concepts
 
-| Aspect | Virtual Machine | Container |
-|--------|-----------------|-----------|
-| **Startup Time** | 30-60 seconds | 1-2 seconds |
-| **Memory Overhead** | High (full OS) | Low (shared kernel) |
-| **Isolation Level** | Strong (hardware-level) | Moderate (process-level) |
-| **Portability** | Limited | High |
-| **Resource Efficiency** | Lower | Higher |
-| **Use Case** | Legacy apps, strong isolation | Microservices, rapid scaling |
+### VM vs Container Comparison
 
-### Why Containers Win for Microservices
+<table>
+<tr>
+<th>Aspect</th>
+<th>Virtual Machine</th>
+<th>Container</th>
+</tr>
+<tr>
+<td><b>Startup Time</b></td>
+<td>30-60 seconds</td>
+<td>1-2 seconds</td>
+</tr>
+<tr>
+<td><b>Memory Overhead</b></td>
+<td>High (full OS per VM)</td>
+<td>Low (shared kernel)</td>
+</tr>
+<tr>
+<td><b>Isolation</b></td>
+<td>Strong (hardware-level)</td>
+<td>Moderate (process-level)</td>
+</tr>
+<tr>
+<td><b>Portability</b></td>
+<td>Limited</td>
+<td>High</td>
+</tr>
+<tr>
+<td><b>Best For</b></td>
+<td>Legacy apps, strict isolation</td>
+<td>Microservices, rapid scaling</td>
+</tr>
+</table>
 
-Containers share the host OS kernel, eliminating the need for a separate operating system per instance. This results in:
-
-- **Faster deployment**: Applications start in seconds
-- **Better resource utilization**: More containers per host
-- **Consistent environments**: "Works on my machine" is eliminated
-
----
-
-## Latency Analysis
-
-The application simulates real-world cloud latency by introducing random delays in API responses.
-
-### Key Observations
-
-1. **Response Time Variability**: Each request experiences different latency due to simulated network conditions
-2. **Long-Tail Distribution**: Most requests are fast, but some experience significantly higher delays
-3. **P99 Latency**: The 99th percentile latency is critical for user experience in production systems
-
-### Latency Distribution
-
-![Latency Histogram](screenshots/latency.png)
-
-The histogram shows a typical latency distribution where:
-- Most requests complete within the expected timeframe
-- A "tail" of slower requests exists (tail latency)
-- This pattern mirrors real-world cloud application behavior
-
----
-
-## Tail Latency
-
-**Tail latency** refers to the slowest responses in a system, typically measured at the 99th or 99.9th percentile.
-
-### Why It Matters
-
-| Percentile | Impact |
-|------------|--------|
-| P50 (Median) | Typical user experience |
-| P90 | 1 in 10 users affected |
-| P99 | 1 in 100 users affected |
-| P99.9 | Critical for high-traffic systems |
-
-In systems handling millions of requests, even P99.9 latency affects thousands of users daily.
-
-### Causes of Tail Latency
-
-- Garbage collection pauses
-- Network congestion
-- Resource contention
-- Cold starts in serverless environments
+> **Why Containers Win for Microservices**: Containers share the host OS kernel, eliminating the need for a separate operating system per instance. This results in faster deployment, better resource utilization, and consistent environments.
 
 ---
 
-## Resource Utilization
+### Latency Analysis
 
-### System Memory Analysis
+The application simulates real-world cloud latency patterns:
 
-![System Memory](screenshots/system-memory.png)
+```
+Response Time Distribution
+--------------------------
 
-The host system utilizes approximately 11 GB of memory, demonstrating:
-- **VM Overhead**: Traditional virtualization requires significant memory for each guest OS
-- **Container Efficiency**: Containers share the host kernel, dramatically reducing memory consumption
-- **Scalability Impact**: Lower memory per instance = more services per host
+Count
+  ^
+  |   ****
+  |  ******
+  | ********
+  |**********
+  |************
+  |**************                       * * *
+  +---------------------------------->  Response Time
+      Fast            Median            Tail (P99)
+      
+Most requests are fast, but a "tail" of slower requests always exists.
+```
+
+#### Percentile Breakdown
+
+| Percentile | Meaning | Impact |
+|------------|---------|--------|
+| **P50** (Median) | Half of requests are faster | Typical user experience |
+| **P90** | 90% of requests are faster | 1 in 10 users see this delay |
+| **P99** | 99% of requests are faster | 1 in 100 users affected |
+| **P99.9** | 99.9% of requests are faster | Critical for high-traffic systems |
+
+> **Why Tail Latency Matters**: In systems handling millions of requests, even P99.9 latency affects thousands of users daily. Causes include garbage collection, network congestion, resource contention, and cold starts.
 
 ---
 
-## AWS Cloud Infrastructure
+### AWS Nitro Hypervisor
 
-### EC2 Instance Deployment
+AWS Nitro is a purpose-built system that powers modern EC2 instances:
 
-![AWS EC2 Instance](screenshots/aws-ec2.png)
-
-Amazon EC2 provides the foundation for cloud deployments with:
-
-- **On-demand scaling**: Spin up instances as needed
-- **Multiple instance types**: Optimize for compute, memory, or storage
-- **Global availability**: Deploy across multiple regions
-
-### Nitro Hypervisor
-
-AWS Nitro is a purpose-built hypervisor that:
+```
++----------------------------------------------------------+
+|                    AWS NITRO SYSTEM                       |
++----------------------------------------------------------+
+|                                                           |
+|   +-------------------+   +-------------------+           |
+|   |   Nitro Cards     |   |   Nitro Security  |          |
+|   |                   |   |      Chip         |          |
+|   | - VPC networking  |   | - Hardware root   |          |
+|   | - EBS storage     |   |   of trust        |          |
+|   | - Instance storage|   | - Secure boot     |          |
+|   +-------------------+   +-------------------+           |
+|                                                           |
+|   +-------------------+   +-------------------+           |
+|   | Nitro Hypervisor  |   |   Nitro Enclaves  |          |
+|   |                   |   |                   |          |
+|   | - Lightweight     |   | - Isolated compute|          |
+|   | - Near bare-metal |   | - Sensitive data  |          |
+|   |   performance     |   |   processing      |          |
+|   +-------------------+   +-------------------+           |
++----------------------------------------------------------+
+```
 
 | Feature | Benefit |
 |---------|---------|
-| Hardware offloading | Networking and storage handled by dedicated hardware |
+| Hardware Offloading | Networking and storage handled by dedicated hardware |
 | Security | Isolation enforced at the hardware level |
 | Performance | Near bare-metal performance for instances |
 | Efficiency | More resources available for customer workloads |
 
 ---
 
-## How to Run
+## API Reference
 
-### Prerequisites
+| Endpoint | Method | Description | Example Response |
+|----------|--------|-------------|------------------|
+| `/` | GET | Root with simulated delay | `{"message": "Mobile Cloud API", "delay": 0.23}` |
+| `/data?size=N` | GET | Generate N data items | `{"data": [...], "count": N}` |
+| `/health` | GET | Health check | `{"status": "healthy"}` |
 
-- Docker installed and running
-- Python 3.9+ (for local development)
+---
 
-### Docker Deployment
+## Screenshots
 
-```bash
-# Build the image
-docker build -t lab1-api .
+### AWS EC2 Instance
+![AWS EC2 Instance](screenshots/aws-ec2.png)
 
-# Run the container
-docker run -p 5000:5000 lab1-api
+### Latency Distribution Analysis
+![Latency Histogram](screenshots/latency.png)
 
-# Test the API
-curl http://localhost:5000
-curl http://localhost:5000/data?size=100
-```
+### System Memory Utilization
+![System Memory](screenshots/system-memory.png)
 
-### Local Development
+---
+
+## Local Development
 
 ```bash
 # Install dependencies
@@ -183,21 +236,11 @@ python app.py
 
 ---
 
-## API Endpoints
-
-| Endpoint | Method | Description | Response |
-|----------|--------|-------------|----------|
-| `/` | GET | Returns response with simulated delay | `{"message": "Mobile Cloud API", "delay": 0.xx}` |
-| `/data?size=N` | GET | Returns N data items | `{"data": [...], "count": N}` |
-| `/health` | GET | Health check | `{"status": "healthy"}` |
-
----
-
 ## Key Takeaways
 
 1. **Containers are more efficient** than VMs for microservices due to shared kernel architecture
-2. **Tail latency** is a critical metric that affects real user experience
-3. **Cloud infrastructure** (like AWS EC2 with Nitro) provides the foundation for scalable deployments
+2. **Tail latency (P99, P99.9)** is a critical metric that affects real user experience
+3. **AWS Nitro** provides near bare-metal performance with hardware-level security
 4. **Performance monitoring** is essential for understanding system behavior under load
 
 ---
@@ -207,3 +250,10 @@ python app.py
 - [AWS Nitro System](https://aws.amazon.com/ec2/nitro/)
 - [Understanding Tail Latency](https://www.brendangregg.com/blog/2014-07-24/latency-analysis-with-bcc.html)
 - [Docker vs VMs](https://www.docker.com/resources/what-container/)
+
+---
+
+<p align="center">
+  <a href="../README.md">Back to Main README</a> |
+  <a href="../Lab2/README.md">Next: Lab 2 - Distributed Systems</a>
+</p>
