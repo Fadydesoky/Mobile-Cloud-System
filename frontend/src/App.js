@@ -378,17 +378,19 @@ const SystemSummary = ({ metrics, activeServices, isLoading }) => {
 
   return (
     <div
+      className="glass-card"
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(4, 1fr)",
         gap: 16,
-        padding: 20,
+        padding: 24,
         borderRadius: "var(--radius-xl)",
         background: "linear-gradient(135deg, var(--background-secondary) 0%, var(--background-tertiary) 100%)",
         border: "1px solid var(--border)",
         marginBottom: 24,
         position: "relative",
         overflow: "hidden",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
       }}
     >
       {/* Animated background when loading */}
@@ -429,20 +431,21 @@ const SystemSummary = ({ metrics, activeServices, isLoading }) => {
             <item.icon />
           </div>
           <div>
-            <div style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div style={{ fontSize: 11, color: "var(--foreground-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 500, marginBottom: 4 }}>
               {item.label}
             </div>
             <div style={{ 
-              fontSize: 24, 
+              fontSize: 28, 
               fontWeight: 700, 
               fontFamily: "var(--font-mono)", 
               color: item.color,
               display: "flex",
               alignItems: "baseline",
-              gap: 2,
+              gap: 3,
+              textShadow: `0 0 20px ${item.color}40`,
             }}>
               {typeof item.value === "number" ? item.value.toFixed(item.suffix === "%" || item.suffix === "ms" ? 0 : 0) : item.value}
-              <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.7 }}>{item.suffix}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.8 }}>{item.suffix}</span>
             </div>
           </div>
         </div>
@@ -451,35 +454,63 @@ const SystemSummary = ({ metrics, activeServices, isLoading }) => {
   );
 };
 
-// Metric card component with animations
-const MetricCard = ({ title, value, suffix, change, icon: Icon, trend, chart }) => {
+// Metric card component with animations and glassmorphism
+const MetricCard = ({ title, value, suffix, change, icon: Icon, trend, chart, highlight }) => {
   const [isHovered, setIsHovered] = useState(false);
   const animatedValue = useAnimatedValue(typeof value === "number" ? value : parseFloat(value) || 0);
   
+  // Determine if this is a key metric (Success Rate or Avg Latency)
+  const isKeyMetric = title === "Success Rate" || title === "Avg Latency";
+  
   return (
     <div
-      className="animate-fade-in"
+      className="animate-fade-in glass-card"
       style={{
-        padding: "20px",
+        padding: isKeyMetric ? "24px" : "20px",
         borderRadius: "var(--radius-lg)",
-        border: "1px solid var(--border)",
+        border: `1px solid ${isHovered ? "var(--accent)" : "var(--border)"}`,
         backgroundColor: "var(--background-secondary)",
         transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         cursor: "default",
-        transform: isHovered ? "translateY(-4px)" : "translateY(0)",
-        boxShadow: isHovered ? "var(--shadow-lg)" : "none",
+        transform: isHovered ? "translateY(-6px) scale(1.02)" : "translateY(0) scale(1)",
+        boxShadow: isHovered 
+          ? "0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(59, 130, 246, 0.1)" 
+          : "0 4px 12px rgba(0, 0, 0, 0.1)",
+        position: "relative",
+        overflow: "hidden",
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <span style={{ fontSize: 13, color: "var(--foreground-secondary)", fontWeight: 500 }}>{title}</span>
+      {/* Subtle gradient overlay for key metrics */}
+      {isKeyMetric && (
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: title === "Success Rate" 
+            ? "linear-gradient(90deg, #22c55e, #10b981)" 
+            : "linear-gradient(90deg, #f59e0b, #eab308)",
+          opacity: isHovered ? 1 : 0.7,
+          transition: "opacity 0.3s ease",
+        }} />
+      )}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isKeyMetric ? 16 : 12 }}>
+        <span style={{ 
+          fontSize: isKeyMetric ? 14 : 13, 
+          color: "var(--foreground-secondary)", 
+          fontWeight: 600,
+          textTransform: isKeyMetric ? "uppercase" : "none",
+          letterSpacing: isKeyMetric ? "0.05em" : "normal",
+        }}>{title}</span>
         {Icon && (
           <span 
             style={{ 
-              color: "var(--foreground-muted)",
-              transform: isHovered ? "scale(1.1)" : "scale(1)",
-              transition: "transform 0.2s ease",
+              color: isHovered ? "var(--accent)" : "var(--foreground-muted)",
+              transform: isHovered ? "scale(1.2) rotate(5deg)" : "scale(1)",
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
             <Icon />
@@ -489,16 +520,21 @@ const MetricCard = ({ title, value, suffix, change, icon: Icon, trend, chart }) 
       <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
         <span 
           style={{ 
-            fontSize: 32, 
+            fontSize: isKeyMetric ? 40 : 32, 
             fontWeight: 700, 
             fontFamily: "var(--font-mono)", 
-            letterSpacing: "-0.02em",
-            transition: "color 0.3s ease",
+            letterSpacing: "-0.03em",
+            transition: "all 0.3s ease",
+            background: isKeyMetric && isHovered 
+              ? "linear-gradient(135deg, var(--foreground) 0%, var(--accent) 100%)" 
+              : "none",
+            WebkitBackgroundClip: isKeyMetric && isHovered ? "text" : "unset",
+            WebkitTextFillColor: isKeyMetric && isHovered ? "transparent" : "unset",
           }}
         >
           {typeof value === "number" ? Math.round(animatedValue) : value}
         </span>
-        {suffix && <span style={{ fontSize: 14, color: "var(--foreground-secondary)" }}>{suffix}</span>}
+        {suffix && <span style={{ fontSize: isKeyMetric ? 18 : 14, color: "var(--foreground-secondary)", fontWeight: 500 }}>{suffix}</span>}
       </div>
       {change !== undefined && (
         <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
@@ -559,16 +595,20 @@ const ServiceCard = ({ name, status, latency, port, description, icon: Icon }) =
 
   return (
     <div
-      className="animate-fade-in"
+      className="animate-fade-in glass-card"
       style={{
         padding: "20px",
         borderRadius: "var(--radius-lg)",
-        border: `1px solid ${isHovered ? statusColors[status] + "50" : "var(--border)"}`,
+        border: `1px solid ${isHovered ? statusColors[status] : "var(--border)"}`,
         backgroundColor: "var(--background-secondary)",
         transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        transform: isHovered ? "translateY(-2px)" : "translateY(0)",
-        boxShadow: isHovered ? `0 8px 30px ${statusColors[status]}15` : "none",
+        transform: isHovered ? "translateY(-4px) scale(1.01)" : "translateY(0) scale(1)",
+        boxShadow: isHovered 
+          ? `0 12px 40px ${statusColors[status]}25, 0 0 0 1px ${statusColors[status]}30` 
+          : "0 2px 8px rgba(0, 0, 0, 0.1)",
         cursor: "pointer",
+        position: "relative",
+        overflow: "hidden",
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
@@ -577,6 +617,17 @@ const ServiceCard = ({ name, status, latency, port, description, icon: Icon }) =
       }}
       onClick={() => setShowDetails(!showDetails)}
     >
+      {/* Status indicator bar at top */}
+      <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 2,
+        backgroundColor: statusColors[status],
+        opacity: isHovered ? 1 : 0.5,
+        transition: "opacity 0.3s ease",
+      }} />
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{
@@ -673,20 +724,29 @@ const LogEntry = ({ timestamp, message, type, isNew }) => {
     error: "var(--error-muted)",
   };
 
+  const typeLabels = {
+    info: "INFO",
+    success: "OK",
+    warning: "WARN",
+    error: "ERR",
+  };
+
   return (
     <div
       className={isNew ? "animate-slide-in" : ""}
       style={{
         display: "flex",
         gap: 12,
-        padding: "10px 12px",
+        padding: "10px 14px",
         borderBottom: "1px solid var(--border)",
         fontSize: 13,
         fontFamily: "var(--font-mono)",
-        backgroundColor: bgColors[type] || "transparent",
-        borderRadius: "var(--radius-sm)",
+        backgroundColor: isNew ? `${colors[type]}15` : bgColors[type] || "transparent",
+        borderRadius: "var(--radius-md)",
         marginBottom: 4,
-        transition: "background-color 0.3s ease",
+        transition: "all 0.3s ease",
+        borderLeft: `3px solid ${colors[type] || "transparent"}`,
+        boxShadow: isNew ? `0 0 15px ${colors[type]}20` : "none",
       }}
     >
       <span style={{ 
@@ -695,15 +755,29 @@ const LogEntry = ({ timestamp, message, type, isNew }) => {
         display: "flex",
         alignItems: "center",
         gap: 6,
+        fontSize: 12,
       }}>
         <Icons.Clock />
         {timestamp}
+      </span>
+      <span style={{
+        padding: "2px 6px",
+        borderRadius: "var(--radius-sm)",
+        backgroundColor: `${colors[type]}20`,
+        color: colors[type],
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: "0.05em",
+        flexShrink: 0,
+      }}>
+        {typeLabels[type] || "INFO"}
       </span>
       <span style={{ 
         color: colors[type] || colors.info,
         display: "flex",
         alignItems: "center",
         gap: 6,
+        flex: 1,
       }}>
         {type === "success" && <Icons.Check />}
         {type === "error" && <Icons.X />}
@@ -1050,6 +1124,18 @@ function App() {
         .btn-hover:active {
           transform: translateY(0);
         }
+        @keyframes gradientShift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .glass-card {
+          background: rgba(17, 17, 17, 0.6);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+        }
+        [data-theme="light"] .glass-card {
+          background: rgba(255, 255, 255, 0.7);
+        }
       `}</style>
 
       {/* Demo Mode Banner */}
@@ -1197,10 +1283,19 @@ function App() {
         {/* Header */}
         <div style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 20 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>
+            <h1 style={{ 
+              margin: 0, 
+              fontSize: 36, 
+              fontWeight: 700, 
+              letterSpacing: "-0.03em",
+              background: "linear-gradient(135deg, var(--foreground) 0%, var(--accent) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}>
               Observability Dashboard
             </h1>
-            <p style={{ margin: "8px 0 0", color: "var(--foreground-secondary)", fontSize: 15 }}>
+            <p style={{ margin: "10px 0 0", color: "var(--foreground-secondary)", fontSize: 15, lineHeight: 1.5 }}>
               Real-time monitoring for cloud-native microservices architecture
             </p>
           </div>
@@ -1209,8 +1304,8 @@ function App() {
               onClick={checkHealth}
               className="btn-hover"
               style={{
-                padding: "10px 16px",
-                borderRadius: "var(--radius-md)",
+                padding: "12px 20px",
+                borderRadius: "var(--radius-lg)",
                 border: "1px solid var(--border)",
                 background: "var(--background-secondary)",
                 color: "var(--foreground-secondary)",
@@ -1220,7 +1315,8 @@ function App() {
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                transition: "all 0.2s ease",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
               }}
             >
               <Icons.Refresh />
@@ -1231,20 +1327,27 @@ function App() {
               disabled={loading}
               className="btn-hover"
               style={{
-                padding: "10px 20px",
-                borderRadius: "var(--radius-md)",
+                padding: "12px 24px",
+                borderRadius: "var(--radius-lg)",
                 border: "none",
-                background: loading ? "var(--background-tertiary)" : "var(--foreground)",
-                color: loading ? "var(--foreground-muted)" : "var(--background)",
+                background: loading 
+                  ? "var(--background-tertiary)" 
+                  : "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%)",
+                backgroundSize: "200% 200%",
+                color: loading ? "var(--foreground-muted)" : "#ffffff",
                 cursor: loading ? "not-allowed" : "pointer",
                 fontSize: 14,
                 fontWeight: 600,
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                transition: "all 0.2s ease",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 position: "relative",
                 overflow: "hidden",
+                boxShadow: loading 
+                  ? "none" 
+                  : "0 4px 15px rgba(59, 130, 246, 0.4), 0 0 30px rgba(139, 92, 246, 0.2)",
+                animation: loading ? "none" : "gradientShift 3s ease infinite",
               }}
             >
               {loading ? (
