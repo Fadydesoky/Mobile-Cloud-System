@@ -71,8 +71,13 @@ describe('App Component', () => {
     await act(async () => {
       render(<App />);
     });
-    expect(screen.getByText(/Order Service/i)).toBeInTheDocument();
-    expect(screen.getByText(/Product Service/i)).toBeInTheDocument();
+    // Order Service appears in both architecture diagram and service cards
+    const orderServiceElements = screen.getAllByText(/Order Service/i);
+    expect(orderServiceElements.length).toBeGreaterThan(0);
+    
+    // Product Service appears in both architecture diagram and service cards
+    const productServiceElements = screen.getAllByText(/Product Service/i);
+    expect(productServiceElements.length).toBeGreaterThan(0);
   });
 
   test('shows Processing when simulation runs', async () => {
