@@ -146,8 +146,11 @@ describe('App Component', () => {
     await act(async () => {
       render(<App />);
     });
-    expect(screen.getByText(/Total Requests/i)).toBeInTheDocument();
-    expect(screen.getByText(/Avg Latency/i)).toBeInTheDocument();
+    // Total Requests and Avg Latency appear in both SystemSummary and MetricCards
+    const totalRequestsElements = screen.getAllByText(/Total Requests/i);
+    expect(totalRequestsElements.length).toBeGreaterThan(0);
+    const avgLatencyElements = screen.getAllByText(/Avg Latency/i);
+    expect(avgLatencyElements.length).toBeGreaterThan(0);
   });
 
   test('displays API Response section', async () => {
@@ -205,14 +208,18 @@ describe('App Component', () => {
     await act(async () => {
       render(<App />);
     });
-    expect(screen.getByText(/Success Rate/i)).toBeInTheDocument();
+    // Success Rate appears in both SystemSummary and MetricCards
+    const successRateElements = screen.getAllByText(/Success Rate/i);
+    expect(successRateElements.length).toBeGreaterThan(0);
   });
 
   test('displays uptime metric', async () => {
     await act(async () => {
       render(<App />);
     });
-    expect(screen.getByText(/Uptime/i)).toBeInTheDocument();
+    // Uptime metric card
+    const uptimeElements = screen.getAllByText(/Uptime/i);
+    expect(uptimeElements.length).toBeGreaterThan(0);
   });
 });
 
