@@ -1,113 +1,253 @@
-# Lab 2 - Distributed Consistency and Cloud Systems
+# Lab 2: Distributed Systems and Consistency
 
-## Objective
-This lab explores distributed systems concepts such as consistency, replication, and fault tolerance using a simulated Redis environment.
-
----
-
-## Application Overview
-
-A minimal distributed setup was simulated using two Redis nodes:
-- redis1 (primary node)
-- redis2 (secondary node)
-
-This setup is used to observe how data behaves across multiple nodes in a distributed system.
+This lab explores distributed systems concepts including data consistency, replication, and the fundamental trade-offs defined by the CAP theorem, using Redis as the distributed data store.
 
 ---
 
-## Application Integration
+## Objectives
 
-A simple Flask API was used to simulate interaction with Redis nodes.
+- Understand distributed system consistency models
+- Implement and observe data replication between nodes
+- Analyze the CAP theorem in practice
+- Explore consensus algorithms and their role in distributed systems
 
-Endpoints:
-- `/write` → writes data to the primary node  
-- `/read-primary` → reads data from the primary node  
-- `/read-replica` → reads data from the secondary node  
+---
 
-This demonstrates how applications interact with distributed systems in real-world scenarios.
+## Architecture Overview
 
-## Redis Simulation
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           FLASK API LAYER                                │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │
+│  │    /write       │  │  /read-primary  │  │  /read-replica  │          │
+│  │  Write to       │  │  Read from      │  │  Read from      │          │
+│  │  Primary Node   │  │  Primary Node   │  │  Replica Node   │          │
+│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘          │
+└───────────┼────────────────────┼────────────────────┼────────────────────┘
+            │                    │                    │
+            ▼                    ▼                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      DISTRIBUTED DATA LAYER                              │
+│                                                                          │
+│   ┌─────────────────────┐         ┌─────────────────────┐               │
+│   │   REDIS PRIMARY     │         │   REDIS REPLICA     │               │
+│   │   (redis1)          │ ──────► │   (redis2)          │               │
+│   │                     │  Async  │                     │               │
+│   │   - Accepts writes  │  Repli- │   - Read-only       │               │
+│   │   - Source of truth │  cation │   - Eventually      │               │
+│   │                     │         │     consistent      │               │
+│   └─────────────────────┘         └─────────────────────┘               │
+│                                                                          │
+│                    ◄── Replication Lag ──►                              │
+│                    (Eventual Consistency)                                │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Consistency Models
+
+### Strong Consistency
+All nodes see the same data at the same time. Every read returns the most recent write.
+
+### Eventual Consistency
+Given enough time without new updates, all replicas will converge to the same value. Reads may return stale data temporarily.
+
+### Comparison
+
+| Model | Latency | Availability | Use Case |
+|-------|---------|--------------|----------|
+| Strong | Higher | Lower | Financial transactions |
+| Eventual | Lower | Higher | Social media feeds |
+
+---
+
+## The CAP Theorem
+
+The CAP theorem states that a distributed system can only guarantee two of three properties:
+
+```
+                        Consistency (C)
+                             ▲
+                            / \
+                           /   \
+                          /     \
+                         /   ◆   \
+                        /  Choose  \
+                       /    Two     \
+                      /             \
+                     ▼               ▼
+            Availability (A) ◄────► Partition Tolerance (P)
+```
+
+| Property | Definition |
+|----------|------------|
+| **Consistency** | All nodes see the same data at the same time |
+| **Availability** | Every request receives a response |
+| **Partition Tolerance** | System continues to operate despite network failures |
+
+### Real-World Trade-offs
+
+| System | Choice | Sacrifice |
+|--------|--------|-----------|
+| Traditional RDBMS | CA | Partition Tolerance |
+| MongoDB, Cassandra | AP | Strong Consistency |
+| Zookeeper, etcd | CP | Availability during partitions |
+
+---
+
+## Experiment: Observing Replication Lag
+
+### Setup
+
+The experiment uses two Redis nodes:
+- **redis1**: Primary node (accepts writes)
+- **redis2**: Replica node (read-only, receives replicated data)
+
+### Steps
+
+1. Write a value to the primary node
+2. Immediately read from the replica node
+3. Observe whether the value is present
+
+### Results
 
 ![Redis Simulation](screenshots/redis-simulation.png)
 
----
-
-## Experiment Steps
-
-1. A value was written to the primary node.
-2. The same value was requested from the secondary node.
-3. The results were compared between both nodes.
-
-## Observation
-
-- Data written to the primary node was not immediately available in the secondary node.
-- This indicates a delay in data propagation between nodes.
+**Observation**: Data written to the primary node was not immediately available on the replica. This demonstrates **replication lag** - a key characteristic of eventually consistent systems.
 
 ---
 
-## Interpretation
+## Network Partitions
 
-This behavior can simulate eventual consistency in distributed systems where replication delays may occur.
+A network partition occurs when nodes cannot communicate with each other due to network failure.
 
----
+```
+┌─────────────────┐                    ┌─────────────────┐
+│   Node A        │       ╳ ╳ ╳        │   Node B        │
+│   (Primary)     │ ◄──── PARTITION ──►│   (Replica)     │
+│                 │       ╳ ╳ ╳        │                 │
+└─────────────────┘                    └─────────────────┘
 
-## Consistency in Distributed Systems
+During partition:
+- Node A continues accepting writes
+- Node B serves stale data
+- System must choose: reject writes (CP) or accept divergence (AP)
+```
 
-Maintaining consistency across distributed nodes is challenging due to:
-- Network delays  
-- Replication lag  
-- Node failures  
+### Handling Strategies
 
----
-
-## CAP Theorem
-
-Distributed systems must balance between:
-- Consistency  
-- Availability  
-- Partition Tolerance  
-
-In most real-world systems, a trade-off is made to achieve scalability and availability.
-
----
-
-## Network Partition
-
-When a node becomes unreachable:
-- Updates may not propagate  
-- Systems must choose between consistency and availability  
+| Strategy | Behavior | Trade-off |
+|----------|----------|-----------|
+| Reject writes | Maintain consistency | Reduced availability |
+| Accept writes | Maintain availability | Potential conflicts |
+| Quorum-based | Balance both | Increased latency |
 
 ---
 
-## Raft Consensus
+## Consensus Algorithms
 
-Systems like etcd use the Raft algorithm to:
-- Elect a leader  
-- Synchronize state across nodes  
-- Handle failures automatically  
+Distributed systems use consensus algorithms to agree on values across nodes.
+
+### Raft Consensus
+
+Raft is used by systems like etcd and Consul:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    RAFT CONSENSUS                         │
+│                                                           │
+│   ┌─────────┐         ┌─────────┐         ┌─────────┐   │
+│   │ LEADER  │ ──────► │FOLLOWER │         │FOLLOWER │   │
+│   │         │         │         │ ◄────── │         │   │
+│   └─────────┘         └─────────┘         └─────────┘   │
+│        │                   ▲                   ▲         │
+│        │                   │                   │         │
+│        └───────────────────┴───────────────────┘         │
+│                    Log Replication                        │
+└──────────────────────────────────────────────────────────┘
+
+1. Leader Election: One node becomes the leader
+2. Log Replication: Leader replicates entries to followers
+3. Safety: Only committed entries are applied
+```
+
+### Key Properties
+
+- **Leader-based**: Single leader handles all writes
+- **Majority quorum**: Requires (n/2)+1 nodes for consensus
+- **Automatic failover**: New leader elected if current fails
+
+---
+
+## How to Run
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+
+### Start the Distributed System
+
+```bash
+# Navigate to Lab2
+cd Lab2
+
+# Start Redis nodes and API
+docker compose up --build
+
+# The system exposes:
+# - API: http://localhost:5000
+# - Redis Primary: localhost:6379
+# - Redis Replica: localhost:6380
+```
+
+### Test Replication
+
+```bash
+# Write to primary
+curl "http://localhost:5000/write?key=test&value=hello"
+
+# Read from primary (should return immediately)
+curl "http://localhost:5000/read-primary?key=test"
+
+# Read from replica (may show replication lag)
+curl "http://localhost:5000/read-replica?key=test"
+```
+
+---
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/write?key=X&value=Y` | GET | Write key-value to primary |
+| `/read-primary?key=X` | GET | Read from primary node |
+| `/read-replica?key=X` | GET | Read from replica node |
+| `/health` | GET | Health check |
+
+---
+
+## Key Takeaways
+
+1. **Distributed systems require trade-offs** between consistency, availability, and partition tolerance
+2. **Replication lag is unavoidable** in eventually consistent systems
+3. **Consensus algorithms** (like Raft) provide mechanisms for agreement across nodes
+4. **System design choices** depend on application requirements (e.g., financial systems need strong consistency)
 
 ---
 
 ## Performance Considerations
 
-- Replication improves availability  
-- Asynchronous replication may introduce delays  
-- Trade-offs are required for scalability  
+| Factor | Impact | Mitigation |
+|--------|--------|------------|
+| Replication Lag | Stale reads | Read from primary for critical data |
+| Network Latency | Slower consensus | Optimize network topology |
+| Node Failures | Reduced availability | Increase replica count |
 
 ---
 
-## Key Insight
+## Further Reading
 
-Even a simple distributed setup demonstrates real-world challenges in maintaining consistency, highlighting the importance of system design in cloud environments. This highlights the trade-offs between consistency and availability in distributed systems.
-
----
-
-## Conclusion
-
-This lab demonstrates how distributed systems handle data consistency and replication.
-
-It shows that:
-- Data consistency is not always immediate  
-- Distributed systems require trade-offs  
-- System design plays a critical role in performance and reliability
-- The setup can be extended to include replication between nodes to simulate real-world distributed systems behavior.
+- [CAP Theorem Explained](https://www.ibm.com/topics/cap-theorem)
+- [Raft Consensus Algorithm](https://raft.github.io/)
+- [Redis Replication](https://redis.io/docs/manual/replication/)

@@ -15,12 +15,14 @@ node_modules/
 .vscode/
 *.swp
 
-# Coverage
+# Coverage Reports (auto-generated)
 coverage/
+**/coverage/
 *.lcov
 .coverage
 htmlcov/
 coverage.xml
+lcov-report/
 
 # Logs
 *.log

@@ -1,152 +1,328 @@
-# Lab 3 - Containerization and Cloud Orchestration
+# Lab 3: Containerization and Kubernetes Orchestration
 
-## How to Run
-
-### Build Image (Basic)
-docker build -f Dockerfile.basic -t lab3 .
-
-### Build Image (Multi-stage)
-docker build -f Dockerfile.multistage -t lab3:ms .
-
-### Run Container
-docker run -p 5000:5000 lab3
-
-### Access
-http://localhost:5000
-
-### Kubernetes (Simulation)
-kubectl apply -f deployment.yaml
-kubectl apply -f service.yaml
+This lab covers containerization best practices and container orchestration using Kubernetes, including deployment strategies, health monitoring, and auto-scaling.
 
 ---
 
-## Application Overview
+## Objectives
 
-A Flask-based API was implemented to simulate a cloud service.
-
-The API introduces random delays to simulate real-world latency in cloud environments.
-
-Endpoints:
-- `/` → returns response time with simulated delay  
-- `/data` → returns generated dataset  
-- `/health` → health check endpoint  
-
-Logging is used to monitor requests and simulate observability in cloud systems.
-
-![Architecture Diagram](screenshots/architecture-diagram.png)
-This diagram illustrates the interaction between mobile clients, the Flask API, Kubernetes orchestration, and optional Redis integration.
+- Master Docker containerization with multi-stage builds
+- Understand Kubernetes deployment and service configurations
+- Implement health checks (liveness and readiness probes)
+- Configure horizontal pod autoscaling (HPA)
 
 ---
 
-## Observations
+## Architecture Overview
 
-- Multi-stage Docker builds significantly reduce image size.
-- Containers provide faster startup compared to traditional VMs.
-- Kubernetes ensures high availability through replica management.
-- Kubernetes follows a declarative model where the system maintains the desired state.
-- Logging provides visibility into request behavior, which is essential for monitoring distributed systems.
-
----
-
-## Design Decisions
-
-- Multi-stage Docker builds were used to optimize image size.
-- A lightweight Flask API was used to simulate backend services.
-- Logging was added to track requests and simulate monitoring.
-- Kubernetes YAML files were structured to represent scalable deployments.
-
----
-
-## Namespaces and cgroups
-
-- Namespaces isolate process visibility (PID, network, filesystem).
-- Cgroups control resource allocation such as CPU and memory limits.
-- Together, they enable lightweight and efficient containerization compared to traditional virtualization.
-
----
-
-## Scheduling
-
-Kubernetes automatically schedules pods based on resource availability and constraints.
-
-This is done using a scheduler that considers available resources and system conditions.
-
----
-
-## Self-Healing
-
-When a pod fails or is deleted, Kubernetes replaces it automatically to maintain the desired state.
-
----
-
-## Reflection
-
-### Why namespaces alone are not enough?
-They isolate processes but do not enforce resource limits.
-
-### How do cgroups help?
-They ensure fair resource usage and prevent resource exhaustion.
-
-### What is desired state?
-Kubernetes continuously reconciles the actual system state with the defined configuration.
-
-### Difference between readiness and liveness?
-Readiness determines if the service can receive traffic, while liveness checks if it is still running.
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            KUBERNETES CLUSTER                                │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                          SERVICE (LoadBalancer)                        │  │
+│  │                           mobile-cloud-service                         │  │
+│  │                              Port: 80 → 5000                           │  │
+│  └───────────────────────────────────┬───────────────────────────────────┘  │
+│                                      │                                       │
+│                         ┌────────────┴────────────┐                         │
+│                         │      Load Balancing     │                         │
+│                         └────────────┬────────────┘                         │
+│                                      │                                       │
+│         ┌────────────────────────────┼────────────────────────────┐         │
+│         │                            │                            │         │
+│         ▼                            ▼                            ▼         │
+│  ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐       │
+│  │      POD 1      │     │      POD 2      │     │      POD N      │       │
+│  │  ┌───────────┐  │     │  ┌───────────┐  │     │  ┌───────────┐  │       │
+│  │  │  Flask    │  │     │  │  Flask    │  │     │  │  Flask    │  │       │
+│  │  │   API     │  │     │  │   API     │  │     │  │   API     │  │       │
+│  │  │ Port:5000 │  │     │  │ Port:5000 │  │     │  │ Port:5000 │  │       │
+│  │  └───────────┘  │     │  └───────────┘  │     │  └───────────┘  │       │
+│  │                 │     │                 │     │                 │       │
+│  │  Liveness  ✓    │     │  Liveness  ✓    │     │  Liveness  ✓    │       │
+│  │  Readiness ✓    │     │  Readiness ✓    │     │  Readiness ✓    │       │
+│  └─────────────────┘     └─────────────────┘     └─────────────────┘       │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                    HORIZONTAL POD AUTOSCALER (HPA)                     │  │
+│  │                      Min: 2  |  Max: 10  |  Target CPU: 50%            │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Practical Execution
+## Docker Containerization
 
-Docker images were defined and configured for building and execution.
+### Multi-Stage Build Benefits
 
-Kubernetes configuration files were designed to represent deployment behavior, including:
-- Replication
-- Service exposure
-- Health monitoring via probes
+| Aspect | Single-Stage | Multi-Stage |
+|--------|--------------|-------------|
+| Image Size | ~900MB | ~150MB |
+| Build Dependencies | Included | Excluded |
+| Security Surface | Larger | Minimal |
+| Production Ready | No | Yes |
+
+### Dockerfile Comparison
+
+**Basic Dockerfile** (`Dockerfile.basic`)
+```dockerfile
+FROM python:3.10
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 5000
+CMD ["python", "app.py"]
+```
+
+**Multi-Stage Dockerfile** (`Dockerfile.multistage`)
+```dockerfile
+# Build stage
+FROM python:3.10-slim AS builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --user -r requirements.txt
+
+# Production stage
+FROM python:3.10-slim
+WORKDIR /app
+COPY --from=builder /root/.local /root/.local
+COPY . .
+ENV PATH=/root/.local/bin:$PATH
+EXPOSE 5000
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
+```
+
+---
+
+## Container Fundamentals
+
+### Namespaces
+
+Linux namespaces provide process isolation:
+
+| Namespace | Isolates |
+|-----------|----------|
+| PID | Process IDs |
+| NET | Network interfaces |
+| MNT | Filesystem mounts |
+| UTS | Hostname |
+| IPC | Inter-process communication |
+| USER | User and group IDs |
+
+### Control Groups (cgroups)
+
+Cgroups limit and monitor resource usage:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     CONTROL GROUPS                           │
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐  │
+│  │   CPU Limit     │  │  Memory Limit   │  │  I/O Limit  │  │
+│  │   500m (0.5)    │  │     256Mi       │  │   100 IOPS  │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘  │
+│                                                              │
+│  Prevents any single container from consuming all resources  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Kubernetes Concepts
+
+### Deployment Configuration
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobile-cloud-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mobile-cloud-api
+  template:
+    spec:
+      containers:
+      - name: api
+        image: mobile-cloud-api:latest
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+```
+
+### Health Probes
+
+| Probe Type | Purpose | Failure Action |
+|------------|---------|----------------|
+| **Liveness** | Is the container alive? | Restart container |
+| **Readiness** | Can it receive traffic? | Remove from service |
+| **Startup** | Has it started? | Delay other probes |
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 5000
+  initialDelaySeconds: 5
+  periodSeconds: 3
+```
+
+### Self-Healing
+
+Kubernetes continuously reconciles actual state with desired state:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    SELF-HEALING LOOP                          │
+│                                                               │
+│   Desired State          Actual State          Action         │
+│   ─────────────          ────────────          ──────         │
+│   replicas: 3     vs     pods: 2         →    Create 1 pod   │
+│   replicas: 3     vs     pods: 4         →    Delete 1 pod   │
+│   image: v2       vs     image: v1       →    Rolling update │
+│                                                               │
+└──────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Screenshots
 
-### Docker Build
+### Docker Build Process
 ![Docker Build](screenshots/docker-build.png)
 
 ### Docker Images
 ![Docker Images](screenshots/docker-images.png)
 
-### Kubernetes Pods
+### Kubernetes Pods Running
 ![Kubernetes Pods](screenshots/k8s-pods.png)
+
+### API Testing with Postman
+![Postman Request](screenshots/postman-mobile-api.png)
+
+---
+
+## How to Run
+
+### Docker Only
+
+```bash
+# Build basic image
+docker build -f Dockerfile.basic -t lab3-api:basic .
+
+# Build optimized image
+docker build -f Dockerfile.multistage -t lab3-api:optimized .
+
+# Compare sizes
+docker images | grep lab3-api
+
+# Run container
+docker run -p 5000:5000 lab3-api:optimized
+
+# Test endpoints
+curl http://localhost:5000
+curl http://localhost:5000/health
+curl http://localhost:5000/data?size=10
+```
+
+### Kubernetes Deployment
+
+```bash
+# Apply deployment
+kubectl apply -f deployment.yaml
+
+# Apply service
+kubectl apply -f service.yaml
+
+# Check status
+kubectl get pods
+kubectl get services
+
+# View logs
+kubectl logs -l app=mobile-cloud-api
+
+# Scale manually
+kubectl scale deployment mobile-cloud-api --replicas=5
+
+# Apply HPA
+kubectl apply -f hpa.yaml
+```
+
+---
+
+## API Endpoints
+
+| Endpoint | Method | Description | Example Response |
+|----------|--------|-------------|------------------|
+| `/` | GET | Root with latency simulation | `{"message": "Mobile Cloud API", "delay": 0.5}` |
+| `/data` | GET | Generate data (query: size) | `{"data": [...], "count": 100}` |
+| `/health` | GET | Health check | `{"status": "healthy"}` |
 
 ---
 
 ## Mobile Integration
 
-The Flask API can be accessed from a mobile device using HTTP requests.
+The API can be consumed by mobile applications:
 
-Example clients:
-- Android (Retrofit)
-- iOS (URLSession)
+### Android (Retrofit)
+```kotlin
+interface MobileCloudApi {
+    @GET("/")
+    suspend fun getStatus(): Response<StatusResponse>
+    
+    @GET("/data")
+    suspend fun getData(@Query("size") size: Int): Response<DataResponse>
+}
+```
 
-### API Request Example (Postman)
-
-![Postman Request](screenshots/postman-mobile-api.png)
-
-The request returns JSON data, which can be consumed directly by mobile applications.
-
-This demonstrates a typical client-server interaction in mobile-cloud architectures.
-
-The API is exposed on port 5000 and can be accessed locally or integrated with client applications.
+### iOS (URLSession)
+```swift
+func fetchData(size: Int) async throws -> DataResponse {
+    let url = URL(string: "http://api.example.com/data?size=\(size)")!
+    let (data, _) = try await URLSession.shared.data(from: url)
+    return try JSONDecoder().decode(DataResponse.self, from: data)
+}
+```
 
 ---
 
-## Critical Thinking
+## Key Takeaways
 
-The system demonstrates how modern cloud-native applications are designed using:
+1. **Multi-stage builds** dramatically reduce image size and attack surface
+2. **Namespaces and cgroups** provide container isolation and resource control
+3. **Health probes** enable Kubernetes to maintain application health automatically
+4. **Declarative configuration** allows Kubernetes to self-heal and maintain desired state
+5. **Horizontal scaling** adjusts capacity based on actual demand
 
-- Declarative configuration (Kubernetes)
-- Containerized services (Docker)
-- Observability through logging
+---
 
-This approach separates application logic from infrastructure, improving scalability and maintainability.
+## Architecture Diagram
 
-Even without full cluster execution, the architecture reflects real-world deployment patterns used in production systems.
+![Architecture Diagram](screenshots/architecture-diagram.png)
+
+---
+
+## Further Reading
+
+- [Docker Multi-Stage Builds](https://docs.docker.com/build/building/multi-stage/)
+- [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+- [Configure Liveness and Readiness Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)

@@ -1,137 +1,310 @@
-# Mobile-Cloud-System
+# Mobile Cloud System
 
-## 🚀 Live Demo
+A production-grade cloud-native system demonstrating modern mobile-cloud architecture, microservices patterns, container orchestration, and distributed systems principles.
 
-👉 https://fadydesoky.github.io/Mobile-Cloud-System/
+[![CI/CD Pipeline](https://github.com/Fadydesoky/Mobile-Cloud-System/actions/workflows/ci.yml/badge.svg)](https://github.com/Fadydesoky/Mobile-Cloud-System/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://fadydesoky.github.io/Mobile-Cloud-System/)
+[![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11-blue)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/docker-containerized-2496ED)](https://www.docker.com/)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-orchestration-326CE5)](https://kubernetes.io/)
 
-![CI](https://github.com/Fadydesoky/Mobile-Cloud-System/actions/workflows/ci.yml/badge.svg)
-![Docker](https://img.shields.io/badge/Docker-Containerization-blue)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-Orchestration-blueviolet)
-![Python](https://img.shields.io/badge/Python-Flask-yellow)
-![Redis](https://img.shields.io/badge/Redis-Distributed_System-red)
-![Cloud](https://img.shields.io/badge/Cloud-Computing-green)
-![Status](https://img.shields.io/badge/Project-Completed-success)
+**[View Live Demo](https://fadydesoky.github.io/Mobile-Cloud-System/)**
 
 ---
 
-## Description
+## Features
 
-An end-to-end cloud-native system demonstrating modern mobile-cloud architecture using containers, orchestration, and distributed systems.
-
-The project demonstrates how modern cloud-native applications are built using containers, orchestration, and distributed system principles.
-
----
-
-## Project Summary
-
-This project presents a complete end-to-end cloud-native system that simulates real-world mobile-cloud interaction.
-
-It integrates a frontend client, a containerized backend API, and distributed system components, all orchestrated through modern DevOps practices.
-
-The system demonstrates how applications are built, deployed, and managed using Docker, Kubernetes concepts, and automated CI/CD pipelines.
-
-Overall, the project reflects a practical understanding of cloud computing, system design, and scalable architecture patterns.
+| Feature | Description |
+|---------|-------------|
+| **Microservices Architecture** | Independently deployable services with REST API communication |
+| **Container Orchestration** | Docker containerization with Kubernetes deployment configurations |
+| **Distributed Systems** | Redis-based distributed consistency simulation with CAP theorem demonstration |
+| **Fault Tolerance** | Graceful failure handling, service recovery, and resilience patterns |
+| **CI/CD Pipeline** | Automated testing, security scanning, and deployment via GitHub Actions |
+| **Performance Analysis** | Latency measurement, tail latency analysis, and resource monitoring |
 
 ---
 
 ## System Architecture
 
-The following diagram illustrates the overall architecture of the project, connecting mobile clients, cloud services, and distributed systems:
-
-![Architecture Diagram](Lab3/screenshots/architecture-diagram.png)
-
-This architecture represents a simplified cloud-native system combining client interaction, backend services, and distributed components.
-
-The frontend acts as a client interface, while the Flask API handles request processing.
-
-Containerization ensures portability, and Kubernetes manages deployment and scaling.
-
-Redis is used to simulate distributed system behavior.
-
-This represents a complete mobile-cloud workflow:
-- Mobile client sends requests  
-- Flask API processes data  
-- Kubernetes manages deployment  
-- Redis (optional) simulates distributed storage
-
-End-to-end flow: Frontend → Flask API → Container → Kubernetes → Redis
-
----
-
-
-## Labs Overview
-
-- **Lab 1:** Virtualization and Cloud Basics (Latency & AWS)
-- **Lab 2:** Distributed systems using Redis + Docker Compose
-- **Lab 3:** Containerization + Kubernetes orchestration (HPA, probes, services)
-- **Lab 4:** Microservices architecture with Docker Compose (service-to-service communication & resilience)
-
-## API Endpoints
-
-- GET `/` → Returns response time with simulated delay  
-- GET `/data?size=100` → Returns generated dataset  
-- GET `/health` → Returns service status
-  
----
-
-## Quick Start
-
-The system can be executed locally using Docker and Node.js as shown below.
-
-### 1. Run Backend (Lab 3)
-cd Lab3
-docker build -f Dockerfile.basic -t lab3 .
-docker run -p 5000:5000 lab3
-
-### 2. Run Frontend
-cd frontend
-npm install
-npm start
-
-### 3. Access the System
-Frontend: http://localhost:3000  
-API: http://localhost:5000
-
-## API Example
-
-Sample response from the backend:
-
-```json
-{
-  "message": "Mobile Cloud API",
-  "delay": 0.73
-}
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              MOBILE CLIENT                                   │
+│                         (React Dashboard / Mobile App)                       │
+└─────────────────────────────────┬───────────────────────────────────────────┘
+                                  │ HTTP/REST
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           API GATEWAY LAYER                                  │
+│                          (Load Balancing / Routing)                          │
+└──────────────┬─────────────────────────────────────────┬────────────────────┘
+               │                                         │
+               ▼                                         ▼
+┌──────────────────────────────┐       ┌──────────────────────────────────────┐
+│       ORDER SERVICE          │       │         PRODUCT SERVICE               │
+│    ┌──────────────────┐      │       │      ┌──────────────────┐            │
+│    │   Flask API      │      │  ───► │      │   Flask API      │            │
+│    │   Port: 5002     │      │       │      │   Port: 5001     │            │
+│    └──────────────────┘      │       │      └──────────────────┘            │
+│    ┌──────────────────┐      │       │      ┌──────────────────┐            │
+│    │  Health Check    │      │       │      │  Health Check    │            │
+│    │  Retry Logic     │      │       │      │  Product Data    │            │
+│    └──────────────────┘      │       │      └──────────────────┘            │
+└──────────────────────────────┘       └──────────────────────────────────────┘
+               │                                         │
+               └─────────────────┬───────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CONTAINER ORCHESTRATION                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐  │
+│  │  Docker Engine  │  │   Kubernetes    │  │     Docker Compose          │  │
+│  │  Containerized  │  │   HPA / Probes  │  │   Service Networking        │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        DISTRIBUTED DATA LAYER                                │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                         Redis Cluster                                  │  │
+│  │   ┌─────────────┐         ┌─────────────┐         ┌─────────────┐     │  │
+│  │   │   Primary   │ ──────► │   Replica   │ ──────► │   Replica   │     │  │
+│  │   │   (Write)   │         │   (Read)    │         │   (Read)    │     │  │
+│  │   └─────────────┘         └─────────────┘         └─────────────┘     │  │
+│  │                    Eventual Consistency                                │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Lab 4 — Microservices Architecture
+## Project Structure
 
-Lab 4 extends the system by introducing a real microservices architecture using Docker Compose.
+```
+Mobile-Cloud-System/
+├── Lab1/                    # Virtualization & Cloud Fundamentals
+│   ├── app.py               # Flask API with latency simulation
+│   ├── Dockerfile
+│   └── screenshots/
+│
+├── Lab2/                    # Distributed Systems & Consistency
+│   ├── app.py               # Redis integration API
+│   ├── docker-compose.yml   # Multi-node Redis setup
+│   └── screenshots/
+│
+├── Lab3/                    # Container Orchestration
+│   ├── app.py               # Production-ready Flask API
+│   ├── Dockerfile.basic
+│   ├── Dockerfile.multistage
+│   ├── deployment.yaml      # Kubernetes deployment
+│   ├── service.yaml         # Kubernetes service
+│   ├── tests/               # Unit tests with pytest
+│   └── screenshots/
+│
+├── Lab4/                    # Microservices Architecture
+│   ├── order-service/       # Order processing microservice
+│   ├── product-service/     # Product catalog microservice
+│   ├── docker-compose.yml   # Service orchestration
+│   ├── tests/               # Integration tests
+│   └── screenshots/
+│
+├── frontend/                # React Dashboard
+│   ├── src/
+│   └── screenshots/
+│
+└── .github/workflows/       # CI/CD Pipeline
+    └── ci.yml
+```
 
-The system is split into two independent services:
+---
 
-- **Product Service** → provides product data  
-- **Order Service** → processes orders and communicates with Product Service  
+## Quick Start
 
-This demonstrates:
+### Option 1: Run with Docker Compose (Recommended)
 
-- Service-to-service communication  
-- Environment-based configuration  
-- Fault tolerance and retry mechanisms  
-- Real-world microservices behavior  
+```bash
+# Clone the repository
+git clone https://github.com/Fadydesoky/Mobile-Cloud-System.git
+cd Mobile-Cloud-System
 
-### Architecture
+# Start the microservices system
+cd Lab4
+docker compose up --build
 
-Client → Order Service → Product Service
+# Access the services
+# Product Service: http://localhost:5001
+# Order Service:   http://localhost:5002
+```
 
-Both services run in isolated containers and communicate over the Docker internal network.
+### Option 2: Run Individual Components
+
+```bash
+# Backend (Lab3)
+cd Lab3
+docker build -f Dockerfile.basic -t mobile-cloud-api .
+docker run -p 5000:5000 mobile-cloud-api
+
+# Frontend
+cd frontend
+npm install
+npm start
+
+# Access: http://localhost:3000
+```
+
+---
+
+## Demo Workflows
+
+### Creating an Order
+
+```bash
+# 1. Check Product Service health
+curl http://localhost:5001/health
+# Response: {"service": "product-service", "status": "healthy"}
+
+# 2. Get product details
+curl http://localhost:5001/products/1
+# Response: {"id": 1, "name": "Laptop", "price": 999.99, "stock": 50}
+
+# 3. Create an order
+curl -X POST http://localhost:5002/orders \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 1, "quantity": 2}'
+# Response: {"order_id": "...", "status": "confirmed", "total": 1999.98}
+```
+
+### Simulating Failure & Recovery
+
+```bash
+# 1. Stop the Product Service
+docker compose stop product-service
+
+# 2. Attempt to create an order (will fail gracefully)
+curl -X POST http://localhost:5002/orders \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 1, "quantity": 2}'
+# Response: {"error": "Product service unavailable", "status": "failed"}
+
+# 3. Restart the Product Service
+docker compose start product-service
+
+# 4. Retry the order (succeeds)
+curl -X POST http://localhost:5002/orders \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 1, "quantity": 2}'
+# Response: {"order_id": "...", "status": "confirmed", "total": 1999.98}
+```
+
+---
+
+## API Reference
+
+### Lab3 API (Core Service)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Returns response time with simulated latency |
+| `/data?size=100` | GET | Returns generated dataset of specified size |
+| `/health` | GET | Service health check |
+
+### Lab4 APIs (Microservices)
+
+**Product Service** (Port 5001)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/products/<id>` | GET | Get product by ID |
+
+**Order Service** (Port 5002)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/orders` | POST | Create new order |
+
+---
+
+## Labs Overview
+
+| Lab | Topic | Key Concepts |
+|-----|-------|--------------|
+| [Lab 1](Lab1/README.md) | Virtualization & Cloud | VM vs Containers, Latency Analysis, AWS EC2, Tail Latency |
+| [Lab 2](Lab2/README.md) | Distributed Systems | Redis Replication, CAP Theorem, Eventual Consistency |
+| [Lab 3](Lab3/README.md) | Container Orchestration | Docker Multi-stage Builds, Kubernetes, Health Probes |
+| [Lab 4](Lab4/README.md) | Microservices | Service Communication, Fault Tolerance, Recovery Patterns |
+
+---
+
+## Technology Stack
+
+| Category | Technologies |
+|----------|--------------|
+| **Backend** | Python 3.10+, Flask, Gunicorn |
+| **Frontend** | React 18, JavaScript ES6+ |
+| **Containers** | Docker, Docker Compose |
+| **Orchestration** | Kubernetes (Deployment, Services, HPA) |
+| **Distributed Systems** | Redis (Primary-Replica Replication) |
+| **CI/CD** | GitHub Actions |
+| **Testing** | pytest, Jest, Coverage |
+| **Security** | Bandit (SAST), Trivy (Container Scanning) |
+
+---
+
+## CI/CD Pipeline
+
+The project implements a comprehensive CI/CD pipeline with the following stages:
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Backend    │     │    Code      │     │   Security   │     │   Frontend   │
+│    Tests     │     │   Quality    │     │    Scan      │     │    Build     │
+│  (py 3.9-11) │     │   (Lint)     │     │  (Bandit)    │     │   (React)    │
+└──────┬───────┘     └──────┬───────┘     └──────┬───────┘     └──────┬───────┘
+       │                    │                    │                    │
+       └────────────────────┴────────────────────┴────────────────────┘
+                                      │
+                                      ▼
+                          ┌──────────────────────┐
+                          │    Docker Build      │
+                          │   & Trivy Scan       │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  Integration Tests   │
+                          │  (Docker Compose)    │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │   Deploy to GitHub   │
+                          │       Pages          │
+                          └──────────────────────┘
+```
+
+---
+
+## Key Concepts Demonstrated
+
+- **Virtualization vs Containerization**: Resource efficiency and isolation trade-offs
+- **Cloud Infrastructure**: AWS EC2, Nitro Hypervisor architecture
+- **Distributed Consistency**: CAP Theorem, Eventual Consistency, Replication Lag
+- **Container Orchestration**: Kubernetes Deployments, Services, Horizontal Pod Autoscaling
+- **Microservices Patterns**: Service Discovery, Inter-service Communication, Circuit Breaker
+- **Fault Tolerance**: Graceful Degradation, Retry Mechanisms, Health Monitoring
+- **DevOps Practices**: Infrastructure as Code, Automated Testing, Continuous Deployment
 
 ---
 
 ## Screenshots
 
-### Docker Build
+<details>
+<summary><strong>Infrastructure & Deployment</strong></summary>
+
+### Docker Build Process
 ![Docker Build](Lab3/screenshots/docker-build.png)
 
 ### Docker Images
@@ -140,115 +313,71 @@ Both services run in isolated containers and communicate over the Docker interna
 ### Kubernetes Pods
 ![Kubernetes Pods](Lab3/screenshots/k8s-pods.png)
 
-### System Memory Usage (Lab 1)
-![System Memory](Lab1/screenshots/system-memory.png)
+</details>
 
-### Latency Histogram
-![Latency](Lab1/screenshots/latency.png)
+<details>
+<summary><strong>Microservices (Lab 4)</strong></summary>
 
-### Redis Simulation
-![Redis Simulation](Lab2/screenshots/redis-simulation.png)
-
-### Frontend Dashboard
-![Frontend](frontend/screenshots/frontend.png)
-
-### Lab 4 — Microservices (Docker Compose)
-
-#### Containers Running
+### Containers Running
 ![Containers](Lab4/screenshots/containers_running.png)
 
-#### Product Service Health
-![Product Health](Lab4/screenshots/product_health.png)
-
-#### Product Data
-![Product Data](Lab4/screenshots/product_data.png)
-
-#### Order Creation (Success)
+### Order Creation Success
 ![Order Success](Lab4/screenshots/order_success.png)
 
-#### Failure Simulation (Service Down)
+### Failure Simulation
 ![Failure](Lab4/screenshots/failure_simulation.png)
 
-#### Recovery Scenario
+### Service Recovery
 ![Recovery](Lab4/screenshots/recovery.png)
 
-#### Service Logs (Communication)
+### Service Communication Logs
 ![Logs](Lab4/screenshots/logs.png)
 
----
+</details>
 
-## Technologies Used
+<details>
+<summary><strong>Monitoring & Analysis</strong></summary>
 
-- Docker (Containerization)
-- Python (Flask API)
-- Kubernetes (Orchestration Concepts)
-- Redis (Distributed Systems Simulation)
-- React.JS (Frontend Dashboard)
-  
----
+### Latency Distribution
+![Latency](Lab1/screenshots/latency.png)
 
-## CI/CD
+### System Resource Usage
+![System Memory](Lab1/screenshots/system-memory.png)
 
-A production-style CI/CD pipeline is implemented using GitHub Actions.
+### Redis Distributed Simulation
+![Redis](Lab2/screenshots/redis-simulation.png)
 
-The pipeline automatically validates and prepares the system on every push:
+</details>
 
-- Backend validation (Python syntax & linting)  
-- Frontend build verification (React)  
-- Docker image build validation  
-- Automated frontend deployment via GitHub Pages  
+<details>
+<summary><strong>Frontend Dashboard</strong></summary>
 
-This ensures the system is consistently buildable, deployable, and aligned with modern cloud-native development practices.
+### React Dashboard
+![Frontend](frontend/screenshots/frontend.png)
 
+</details>
 
 ---
 
-## Key Concepts Covered
+## Contributing
 
-- Virtualization vs Containerization  
-- Cloud Infrastructure (AWS EC2 & Nitro)  
-- Latency & Performance Analysis  
-- Distributed Consistency (CAP Theorem)  
-- Container Orchestration (Kubernetes)  
-- Mobile-Cloud Integration via APIs  
-- Microservices Architecture & Service Communication  
-- Fault Tolerance & Resilience in Distributed Systems    
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/improvement`)
+3. Commit changes (`git commit -am 'Add new feature'`)
+4. Push to branch (`git push origin feature/improvement`)
+5. Open a Pull Request
 
 ---
 
-## Project Highlights
+## License
 
-- Designed a cloud-based API with simulated latency  
-- Demonstrated distributed system behavior using Redis  
-- Built containerized applications with Docker  
-- Modeled Kubernetes deployment and orchestration  
-- Simulated mobile-to-cloud communication using HTTP APIs
-- Designed a microservices architecture with real service-to-service communication and failure handling    
+This project is developed for educational purposes as part of a Mobile and Cloud Computing course.
 
 ---
 
-## System Explanation
+## Author
 
-This project demonstrates a simplified mobile-cloud architecture.
+**Fady Desoky**
 
-The frontend acts as a client that communicates with a backend API built using Flask.
-
-The backend is containerized using Docker to ensure portability and consistency across environments.
-
-Kubernetes configurations are provided to simulate orchestration features such as scaling, scheduling, and self-healing.
-
-Redis is used to simulate distributed system behavior, particularly eventual consistency between nodes.
-
-Overall, the system represents how modern cloud-native applications are structured and deployed.
-
-## Notes
-
-This project combines practical implementations with conceptual understanding of cloud-native systems.
-
-Some components are demonstrated through simulation to reflect real-world system behavior while maintaining alignment with modern cloud architecture patterns.
-
-Overall, the project represents a simplified end-to-end cloud-native system, covering client interaction, backend services, and orchestration in a unified workflow.
-
-## Contact
-
-- LinkedIn: https://www.linkedin.com/in/fadydesokysaeedabdelaziz/
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue)](https://www.linkedin.com/in/fadydesokysaeedabdelaziz/)
+[![GitHub](https://img.shields.io/badge/GitHub-Follow-black)](https://github.com/Fadydesoky)
