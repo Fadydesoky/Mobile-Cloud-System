@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/Mobile-Cloud-System/static/css/main.17a59a12.css",
-    "main.js": "/Mobile-Cloud-System/static/js/main.029ab5a4.js",
+    "main.js": "/Mobile-Cloud-System/static/js/main.6bbad628.js",
     "index.html": "/Mobile-Cloud-System/index.html",
     "main.17a59a12.css.map": "/Mobile-Cloud-System/static/css/main.17a59a12.css.map",
-    "main.029ab5a4.js.map": "/Mobile-Cloud-System/static/js/main.029ab5a4.js.map"
+    "main.6bbad628.js.map": "/Mobile-Cloud-System/static/js/main.6bbad628.js.map"
   },
   "entrypoints": [
     "static/css/main.17a59a12.css",
-    "static/js/main.029ab5a4.js"
+    "static/js/main.6bbad628.js"
   ]
 }
